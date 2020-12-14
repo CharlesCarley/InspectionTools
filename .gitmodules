@@ -1,0 +1,3 @@
+[submodule "Extern/Math"]
+	path = Extern/Math
+	url = https://github.com/CharlesCarley/Math.git

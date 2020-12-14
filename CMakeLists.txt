@@ -1,6 +1,4 @@
 # -----------------------------------------------------------------------------
-#   Copyright (c) 2019 Charles Carley.
-#
 #   This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
 # arising from the use of this software.
@@ -18,27 +16,5 @@
 # 3. This notice may not be removed or altered from any source distribution.
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.0)
-project(Template)
-
-
-
-
-if (Template_ExternalTarget)
-    set(TargetFolders ${Template_TargetFolders})
-    set(TargetName    ${Template_TargetName})
-    set(TargetGroup   ${Template_TargetGroup})
-else()
-    subdirs(CMake)
-    set(TargetFolders FALSE)
-    set(TargetName Template)
-    unset(TargetGroup )
-endif()
-
-option(Template_BUILD_TEST "Build the template test program." OFF)
-
-
-subdirs(Source)
-
-if (Template_BUILD_TEST)
-    subdirs(Test)
-endif()
+project(InspectionTools)
+subdirs(Utils)
