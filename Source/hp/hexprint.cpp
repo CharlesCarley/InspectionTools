@@ -101,7 +101,7 @@ void dumpCSV(const void *ptr,
     const char *cp = (const char *)ptr;
     for (i = 0; i < len; i += 16)
     {
-        for (j = 0; j < len; j += 16)
+        for (j = 0; j < 16; j++)
         {
             unsigned char c = (unsigned char)cp[i + j];
             printf("0x%02X, ", c);
