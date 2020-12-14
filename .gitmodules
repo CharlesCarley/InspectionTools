@@ -1,3 +1,6 @@
 [submodule "Extern/Math"]
 	path = Extern/Math
 	url = https://github.com/CharlesCarley/Math.git
+[submodule "Extern/Utils"]
+	path = Extern/Utils
+	url = git@github.com:CharlesCarley/Utils.git
