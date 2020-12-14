@@ -8,6 +8,8 @@ jobs:
     
     steps:
      - uses: actions/checkout@v1
+     - name: PullSubModUles
+       run: python getupdate.py .
      - name: Configure
        run: cmake .
      - name: Make
