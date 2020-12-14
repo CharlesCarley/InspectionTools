@@ -17,4 +17,7 @@
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.0)
 project(InspectionTools)
-subdirs(Utils)
+subdirs(CMake)
+subdirs(Extern/Utils)
+subdirs(Extern/Math)
+subdirs(Source)
