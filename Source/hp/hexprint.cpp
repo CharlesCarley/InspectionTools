@@ -134,16 +134,15 @@ int main(int argc, char **argv)
 
     if (psr.isPresent("flag"))
     {
-        ParseOption *op = psr.getOption("f");
+        ParseOption *op = psr.getOption("flag");
         info.m_flags    = op->getInt();
     }
 
     if (psr.isPresent("mark"))
     {
         ParseOption *op = psr.getOption("mark");
-        info.m_code = op->getInt(0, 16);
+        info.m_code = op->getInt64(0, 16);
     }
-
     if (psr.isPresent("no-color"))
         info.m_flags &= ~PF_COLORIZE;
 
