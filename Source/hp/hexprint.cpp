@@ -132,9 +132,9 @@ int main(int argc, char **argv)
 
     ProgramInfo info = {skFileStream(), -1, {(SKuint32)-1, (SKuint32)-1}, PF_DEFAULT | PF_FULLADDR};
 
-    if (psr.isPresent("flag"))
+    if (psr.isPresent("flags"))
     {
-        ParseOption *op = psr.getOption("flag");
+        ParseOption *op = psr.getOption("flags");
         info.m_flags    = op->getInt();
     }
 
@@ -168,7 +168,6 @@ int main(int argc, char **argv)
         skLogf(LD_ERROR, "Failed to open file %s\n", args[0].c_str());
         return 1;
     }
-
 
     HexPrint(info);
     return 0;
