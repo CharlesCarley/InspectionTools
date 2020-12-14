@@ -1,8 +1,3 @@
-set(Math_ExternalTarget TRUE)
-set(Math_TargetFolders TRUE)
-set(Math_TargetName  Math)
-set(Math_TargetGroup Extern)
-subdirs(Math)
 
 set(Utils_ExternalTarget TRUE)
 set(Utils_TargetFolders TRUE)
