@@ -34,6 +34,7 @@ struct ProgramInfo
     SKint64      m_code;
     SKuint32     m_addressRange[2];
     SKuint32     m_flags;
+    bool         csv;
 };
 
 const skCommandLine::Switch Switches[] = {
@@ -80,9 +81,34 @@ const skCommandLine::Switch Switches[] = {
         true,
         2,
     },
+    {
+        "CSV",
+        0,
+        "csv",
+        "Converts the output to a comma separated buffer",
+        false,
+        0,
+    },
 };
 
-
+void dumpCSV(const void *ptr,
+             SKsize      offset,
+             SKsize      len)
+{
+    if (!ptr || offset == SK_NPOS || len == SK_NPOS)
+        return;
+    SKsize      i, j;
+    const char *cp = (const char *)ptr;
+    for (i = 0; i < len; i += 16)
+    {
+        for (j = 0; j < len; j += 16)
+        {
+            unsigned char c = (unsigned char)cp[i + j];
+            printf("0x%02X, ", c);
+        }
+        printf("\n");
+    }
+}
 
 void HexPrint(ProgramInfo &ctx)
 {
@@ -111,12 +137,15 @@ void HexPrint(ProgramInfo &ctx)
         if (br != -1 && br > 0)
         {
             buffer[br] = 0;
-            dumpHex(buffer, tr + a, br, ctx.m_flags, ctx.m_code);
+
+            if (ctx.csv)
+                dumpCSV(buffer, tr + a, br);
+            else
+                dumpHex(buffer, tr + a, br, ctx.m_flags, ctx.m_code);
             tr += br;
         }
     }
 }
-
 
 int main(int argc, char **argv)
 {
@@ -141,18 +170,20 @@ int main(int argc, char **argv)
     if (psr.isPresent("mark"))
     {
         ParseOption *op = psr.getOption("mark");
-        info.m_code = op->getInt64(0, 16);
+        info.m_code     = op->getInt64(0, 16);
     }
     if (psr.isPresent("no-color"))
         info.m_flags &= ~PF_COLORIZE;
 
+    if (psr.isPresent("csv"))
+        info.csv = true;
+
     if (psr.isPresent("range"))
     {
-        ParseOption *op = psr.getOption("range");
+        ParseOption *op        = psr.getOption("range");
         info.m_addressRange[0] = op->getInt(0, 16);
         info.m_addressRange[1] = op->getInt(1, 10);
     }
-
 
     using List = skCommandLine::Parser::List;
     List &args = psr.getArgList();
