@@ -86,7 +86,7 @@ const skCommandLine::Switch Switches[] = {
         0,
         "csv",
         "Converts the output to a comma separated buffer",
-        false,
+        true,
         0,
     },
 };
