@@ -1,7 +1,4 @@
 # -----------------------------------------------------------------------------
-#
-#   Copyright (c) 2019 Charles Carley.
-#
 #   This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
 # arising from the use of this software.
@@ -20,3 +17,11 @@
 # ------------------------------------------------------------------------------
 include(StaticRuntime)
 set_static_runtime()
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+
+
+set(Utils_INCLUDE ${InspectionTools_SOURCE_DIR}/Extern)
+set(Math_INCLUDE  ${InspectionTools_SOURCE_DIR}/Extern)
+
+

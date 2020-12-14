@@ -4,3 +4,6 @@
 [submodule "Extern/Utils"]
 	path = Extern/Utils
 	url = git@github.com:CharlesCarley/Utils.git
+[submodule "Extern/SDL"]
+	path = Extern/SDL
+	url = git@github.com:CharlesCarley/sdl.git
