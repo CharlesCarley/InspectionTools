@@ -9,7 +9,7 @@ jobs:
     steps:
      - uses: actions/checkout@v1
      - name: PullSubModUles
-       run: python gitupdate.py .
+       run: git submodule update --init
      - name: Configure
        run: cmake .
      - name: Make
