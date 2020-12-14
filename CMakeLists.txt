@@ -26,6 +26,5 @@ set(CMAKE_MODULE_PATH
 include (Configure)
 subdirs(CMake)
 
-
 subdirs(Extern)
 subdirs(Source)

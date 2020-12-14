@@ -38,7 +38,7 @@ struct ProgramInfo
 
 const skCommandLine::Switch Switches[] = {
     {
-        "Mark",
+        "mark",
         'm',
         "mark",
         "Mark a specific hexadecimal sequence."
@@ -47,7 +47,7 @@ const skCommandLine::Switch Switches[] = {
         1,
     },
     {
-        "RemoveColor",
+        "NoColor",
         0,
         "no-color",
         "Remove color output.",
@@ -67,9 +67,18 @@ const skCommandLine::Switch Switches[] = {
         'b',
         "base",
         "Specify the base for the print out."
-        " The default is in base 16.",
+        " The input is in base 16.",
         true,
         1,
+    },
+    {
+        "Range",
+        'r',
+        "range",
+        "Specify a start address and a range."
+        " The input is in base 16.",
+        true,
+        2,
     },
 };
 
@@ -122,14 +131,29 @@ int main(int argc, char **argv)
         return 1;
 
     ProgramInfo info = {skFileStream(), -1, {(SKuint32)-1, (SKuint32)-1}, PF_DEFAULT | PF_FULLADDR};
-    if (psr.isPresent("f"))
+
+    if (psr.isPresent("flag"))
     {
         ParseOption *op = psr.getOption("f");
         info.m_flags    = op->getInt();
     }
 
+    if (psr.isPresent("mark"))
+    {
+        ParseOption *op = psr.getOption("mark");
+        info.m_code = op->getInt(0, 16);
+    }
+
     if (psr.isPresent("no-color"))
         info.m_flags &= ~PF_COLORIZE;
+
+    if (psr.isPresent("range"))
+    {
+        ParseOption *op = psr.getOption("range");
+        info.m_addressRange[0] = op->getInt(0, 16);
+        info.m_addressRange[1] = op->getInt(1, 10);
+    }
+
 
     using List = skCommandLine::Parser::List;
     List &args = psr.getArgList();
@@ -148,6 +172,5 @@ int main(int argc, char **argv)
 
 
     HexPrint(info);
-
     return 0;
 }
