@@ -21,8 +21,6 @@
 #include "Utils/skFileStream.h"
 #include "Utils/skHexPrint.h"
 #include "Utils/skLogger.h"
-#include "Utils/skMap.h"
-#include "Utils/skMemoryStream.h"
 #include "Utils/skMemoryUtils.h"
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
@@ -30,7 +28,7 @@
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-const skCommandLine::Switch Switches[] = {
+const Switch Switches[] = {
     {
         "Range",
         'r',
@@ -48,14 +46,6 @@ const skCommandLine::Switch Switches[] = {
         true,
         0,
     },
-    {
-        "CSV",
-        0,
-        "csv",
-        "Output a comma separated value sheet",
-        true,
-        0,
-    },
 };
 
 class Application
@@ -64,9 +54,7 @@ private:
     skFileStream m_stream;
     SKuint32     m_addressRange[2];
     bool         m_includeZero;
-    bool         m_csv;
-
-    SKuint64 m_freqBuffer[256];
+    SKuint64     m_freqBuffer[256];
 
 public:
     Application() :
@@ -100,9 +88,8 @@ public:
         }
 
         m_includeZero = psr.isPresent("no-drop");
-        m_csv         = psr.isPresent("csv");
 
-        using List = skCommandLine::Parser::List;
+        using List = Parser::List;
         List &args = psr.getArgList();
         if (args.empty())
         {
@@ -122,7 +109,7 @@ public:
     int print()
     {
         SKuint8  buffer[1025];
-        skString tstr;
+        skString tmpStr;
 
         SKsize n;
         SKsize a, r;
@@ -130,26 +117,23 @@ public:
         a = skClamp<SKsize>(m_addressRange[0], 0, n);
         r = skClamp<SKsize>(m_addressRange[1], 0, n);
 
-        if (m_addressRange[0] != -1)
+        if (m_addressRange[0] != SK_NPOS32)
             m_stream.seek(a, SEEK_SET);
         else
         {
-            a = 0;
             r = n;
         }
 
-        SKuint64 addr = 0;
-
-        SKsize br, tr = 0, i, m = 0;
+        SKsize br, tr = 0, i;
         while (!m_stream.eof() && tr < r)
         {
             br = m_stream.read(buffer, skMin<SKsize>(1024, r));
-            if (br != -1 && br > 0)
+            if (br != SK_NPOS32 && br > 0)
             {
                 buffer[br] = 0;
                 for (i = 0; i < br; ++i)
                 {
-                    unsigned char ch = (unsigned char)buffer[i];
+                    const auto ch = (unsigned char)buffer[i];
                     m_freqBuffer[ch]++;
                 }
             }
@@ -158,7 +142,7 @@ public:
 
         for (i = 0; i < 256; ++i)
         {
-            int v = (int)m_freqBuffer[i];
+            const int v = (int)m_freqBuffer[i];
             if (v != 0 || m_includeZero)
                 printf("%d,%i,\n", (int)i, v);
         }

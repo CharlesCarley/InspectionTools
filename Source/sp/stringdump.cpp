@@ -21,14 +21,12 @@
 #include "Utils/skFileStream.h"
 #include "Utils/skHexPrint.h"
 #include "Utils/skLogger.h"
-#include "Utils/skMap.h"
-#include "Utils/skMemoryStream.h"
 #include "Utils/skString.h"
 
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-const skCommandLine::Switch Switches[] = {
+const Switch Switches[] = {
     {
         "Lower",
         'l',
@@ -101,7 +99,6 @@ class Application
 private:
     skFileStream m_stream;
     SKuint32     m_addressRange[2];
-    SKuint32     m_flags;
     SKuint32     m_number;
     bool         m_upperCase;
     bool         m_lowercaseCase;
@@ -114,7 +111,6 @@ private:
 public:
     Application() :
         m_addressRange(),
-        m_flags(0),
         m_number(SK_NPOS32),
         m_upperCase(false),
         m_lowercaseCase(false),
@@ -135,14 +131,12 @@ public:
     int parse(int argc, char **argv)
     {
         Parser psr;
-        psr.initializeSwitches(Switches, sizeof(Switches) / sizeof(Switches[0]));
+        psr.initializeSwitches(Switches, sizeof Switches / sizeof Switches[0]);
 
         if (psr.parse(argc, argv) < 0)
             return 1;
 
         m_logAddress = psr.isPresent("show-address");
-
-
 
         m_mixed = psr.isPresent("a");
         if (!m_mixed)
@@ -172,7 +166,7 @@ public:
             m_addressRange[1] = op->getInt(1, 10);
         }
 
-        using List = skCommandLine::Parser::List;
+        using List = Parser::List;
         List &args = psr.getArgList();
         if (args.empty())
         {
@@ -193,41 +187,30 @@ public:
     {
         bool result = false;
         if (m_mixed)
-            return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+            return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9';
         if (m_special)
             result = ch == '@' || ch == '=' || ch == '_' || ch == '(' || ch == ')' || ch == '{' || ch == '}';
 
         if (!result)
         {
             if (m_lowercaseCase)
-                result = (ch >= 'a' && ch <= 'z');
+                result = ch >= 'a' && ch <= 'z';
             else if (m_upperCase)
-                result = (ch >= 'A' && ch <= 'Z');
+                result = ch >= 'A' && ch <= 'Z';
             else if (m_digit)
-                result = (ch >= '0' && ch <= '9');
+                result = ch >= '0' && ch <= '9';
             else
                 result = ch >= 32 && ch < 127;
         }
         return result;
     }
 
-    int calcspc(int inp)
-    {
-        int i = 0;
-        while (inp > 0)
-        {
-            i++;
-            inp /= 10;
-        }
-        return i;
-    }
-
     int print()
     {
         SKuint8 buffer[1025];
 
-        skString tstr;
-        tstr.reserve(1024);
+        skString tmpStr;
+        tmpStr.reserve(1024);
 
         SKsize n;
         SKsize a, r;
@@ -235,48 +218,47 @@ public:
         a = skClamp<SKsize>(m_addressRange[0], 0, n);
         r = skClamp<SKsize>(m_addressRange[1], 0, n);
 
-        if (m_addressRange[0] != -1)
+        if (m_addressRange[0] != SK_NPOS32)
             m_stream.seek(a, SEEK_SET);
         else
         {
-            a = 0;
             r = n;
         }
 
-        SKuint64 addr = 0;
+        SKuint64 address = 0;
 
         SKsize br, tr = 0, i, m = 0;
         while (!m_stream.eof() && tr < r)
         {
             br = m_stream.read(buffer, skMin<SKsize>(1024, r));
-            if (br != -1 && br > 0)
+            if (br != SK_NPOS32 && br > 0)
             {
                 buffer[br] = 0;
                 for (i = 0; i < br; ++i)
                 {
-                    char ch = (char)buffer[i];
+                    const char ch = (char)buffer[i];
                     if (filterChar(ch))
                     {
-                        if (tstr.empty())
-                            addr = tr + i;
+                        if (tmpStr.empty())
+                            address = tr + i;
 
-                        tstr.append(ch);
+                        tmpStr.append(ch);
                         if (m_merge != SK_NPOS32 && m_merge > 0)
                         {
-                            if ((m++ % m_merge) == 0)
-                                tstr.append('\n');
+                            if (m++ % m_merge == 0)
+                                tmpStr.append('\n');
                         }
                     }
-                    else if (!tstr.empty())
+                    else if (!tmpStr.empty())
                     {
                         if (m_number != SK_NPOS32)
                         {
-                            if (tstr.size() >= m_number)
+                            if (tmpStr.size() >= m_number)
                             {
                                 if (m_logAddress)
-                                    printf("%08X  ", (SKuint32)addr);
+                                    printf("%08X  ", (SKuint32)address);
 
-                                printf("%s", tstr.c_str());
+                                printf("%s", tmpStr.c_str());
                                 if (m_merge == SK_NPOS32)
                                     printf("\n");
                             }
@@ -284,15 +266,15 @@ public:
                         else
                         {
                             if (m_logAddress)
-                                printf("%08X  ", (SKuint32)addr);
+                                printf("%08X  ", (SKuint32)address);
 
-                            printf("%s", tstr.c_str());
+                            printf("%s", tmpStr.c_str());
 
                             if (m_merge == SK_NPOS32)
                                 printf("\n");
                         }
 
-                        tstr.resize(0);
+                        tmpStr.resize(0);
                     }
                 }
             }

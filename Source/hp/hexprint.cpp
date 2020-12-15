@@ -21,23 +21,12 @@
 #include "Utils/skFileStream.h"
 #include "Utils/skHexPrint.h"
 #include "Utils/skLogger.h"
-#include "Utils/skMap.h"
-#include "Utils/skMemoryStream.h"
 #include "Utils/skString.h"
 
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-struct ProgramInfo
-{
-    skFileStream m_stream;
-    SKint64      m_code;
-    SKuint32     m_addressRange[2];
-    SKuint32     m_flags;
-    bool         csv;
-};
-
-const skCommandLine::Switch Switches[] = {
+const Switch Switches[] = {
     {
         "mark",
         'm',
@@ -91,61 +80,133 @@ const skCommandLine::Switch Switches[] = {
     },
 };
 
-void dumpCSV(const void *ptr,
-             SKsize      offset,
-             SKsize      len)
+class Application
 {
-    if (!ptr || offset == SK_NPOS || len == SK_NPOS)
-        return;
-    SKsize      i, j;
-    const char *cp = (const char *)ptr;
-    for (i = 0; i < len; i += 16)
+private:
+    skFileStream m_stream;
+    SKint64      m_code;
+    SKuint32     m_addressRange[2];
+    SKuint32     m_flags;
+    bool         m_csv;
+
+public:
+    Application() :
+        m_code(0),
+        m_addressRange(),
+        m_flags(PF_DEFAULT | PF_FULLADDR),
+        m_csv(false)
     {
-        for (j = 0; j < 16; j++)
+        m_addressRange[0] = SK_NPOS32;
+        m_addressRange[1] = SK_NPOS32;
+    }
+
+    ~Application()
+    {
+    }
+
+    int parse(int argc, char **argv)
+    {
+        Parser psr;
+        psr.initializeSwitches(Switches, sizeof(Switches) / sizeof(Switches[0]));
+
+        if (psr.parse(argc, argv) < 0)
+            return 1;
+
+        if (psr.isPresent("flags"))
         {
-            unsigned char c = (unsigned char)cp[i + j];
-            printf("0x%02X, ", c);
+            ParseOption *op = psr.getOption("flags");
+            m_flags         = op->getInt();
         }
-        printf("\n");
-    }
-}
 
-void HexPrint(ProgramInfo &ctx)
-{
-    skFileStream &fp = ctx.m_stream;
-    SKuint8       buffer[1025];
-
-    SKsize n;
-    SKsize a, r;
-    n = fp.size();
-    a = skClamp<SKsize>(ctx.m_addressRange[0], 0, n);
-    r = skClamp<SKsize>(ctx.m_addressRange[1], 0, n);
-
-    if (ctx.m_addressRange[0] != -1)
-        fp.seek(a, SEEK_SET);
-    else
-    {
-        a = 0;
-        r = n;
-    }
-
-    SKsize br,
-        tr = 0;
-    while (!fp.eof() && tr < r)
-    {
-        br = fp.read(buffer, skMin<SKsize>(1024, r));
-        if (br != -1 && br > 0)
+        if (psr.isPresent("mark"))
         {
-            buffer[br] = 0;
+            ParseOption *op = psr.getOption("mark");
+            m_code          = op->getInt64(0, 16);
+        }
 
-            if (ctx.csv)
-                dumpCSV(buffer, tr + a, br);
-            else
-                dumpHex(buffer, tr + a, br, ctx.m_flags, ctx.m_code);
-            tr += br;
+        if (psr.isPresent("no-color"))
+            m_flags &= ~PF_COLORIZE;
+
+        m_csv = psr.isPresent("csv");
+
+        if (psr.isPresent("r"))
+        {
+            ParseOption *op   = psr.getOption("r");
+            m_addressRange[0] = op->getInt(0, 16);
+            m_addressRange[1] = op->getInt(1, 10);
+        }
+
+        using List = Parser::List;
+        List &args = psr.getArgList();
+        if (args.empty())
+        {
+            skLogf(LD_ERROR, "No files supplied\n");
+            return 1;
+        }
+
+        m_stream.open(args[0].c_str(), skStream::READ);
+        if (!m_stream.isOpen())
+        {
+            skLogf(LD_ERROR, "Failed to open file %s\n", args[0].c_str());
+            return 1;
+        }
+        return 0;
+    }
+
+    void dumpCSV(const void * ptr,
+                 const SKsize offset,
+                 const SKsize len)
+    {
+        if (!ptr || offset == SK_NPOS || len == SK_NPOS)
+            return;
+        SKsize      i, j;
+        const char *cp = (const char *)ptr;
+        for (i = 0; i < len; i += 16)
+        {
+            for (j = 0; j < 16; j++)
+            {
+                const auto c = (unsigned char)cp[i + j];
+                printf("0x%02X, ", c);
+            }
+            printf("\n");
         }
     }
-}
+
+    int print()
+    {
+        SKuint8 buffer[1025];
+
+        SKsize n;
+        SKsize a, r;
+        n = m_stream.size();
+        a = skClamp<SKsize>(m_addressRange[0], 0, n);
+        r = skClamp<SKsize>(m_addressRange[1], 0, n);
+
+        if (m_addressRange[0] != SK_NPOS32)
+            m_stream.seek(a, SEEK_SET);
+        else
+        {
+            a = 0;
+            r = n;
+        }
+
+        SKsize br, tr = 0;
+        while (!m_stream.eof() && tr < r)
+        {
+            br = m_stream.read(buffer, skMin<SKsize>(1024, r));
+            if (br != SK_NPOS32 && br > 0)
+            {
+                buffer[br] = 0;
+                if (m_csv)
+                    dumpCSV(buffer, tr + a, br);
+                else
+                    dumpHex(buffer, tr + a, br, m_flags, m_code);
+                tr += br;
+            }
+        }
+        return 0;
+    }
+};
 
 int main(int argc, char **argv)
 {
@@ -153,53 +214,8 @@ int main(int argc, char **argv)
     log.setFlags(LF_STDOUT);
     log.setDetail(LD_VERBOSE);
 
-    Parser psr;
-    psr.initializeSwitches(Switches, sizeof(Switches) / sizeof(Switches[0]));
-
-    if (psr.parse(argc, argv) < 0)
+    Application sp;
+    if (sp.parse(argc, argv))
         return 1;
-
-    ProgramInfo info = {skFileStream(), -1, {(SKuint32)-1, (SKuint32)-1}, PF_DEFAULT | PF_FULLADDR};
-
-    if (psr.isPresent("flags"))
-    {
-        ParseOption *op = psr.getOption("flags");
-        info.m_flags    = op->getInt();
-    }
-
-    if (psr.isPresent("mark"))
-    {
-        ParseOption *op = psr.getOption("mark");
-        info.m_code     = op->getInt64(0, 16);
-    }
-    if (psr.isPresent("no-color"))
-        info.m_flags &= ~PF_COLORIZE;
-
-    if (psr.isPresent("csv"))
-        info.csv = true;
-
-    if (psr.isPresent("range"))
-    {
-        ParseOption *op        = psr.getOption("range");
-        info.m_addressRange[0] = op->getInt(0, 16);
-        info.m_addressRange[1] = op->getInt(1, 10);
-    }
-
-    using List = skCommandLine::Parser::List;
-    List &args = psr.getArgList();
-    if (args.empty())
-    {
-        skLogf(LD_ERROR, "No files supplied\n");
-        return 1;
-    }
-
-    info.m_stream.open(args[0].c_str(), skStream::READ);
-    if (!info.m_stream.isOpen())
-    {
-        skLogf(LD_ERROR, "Failed to open file %s\n", args[0].c_str());
-        return 1;
-    }
-
-    HexPrint(info);
-    return 0;
+    return sp.print();
 }
