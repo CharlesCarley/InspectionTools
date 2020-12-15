@@ -28,9 +28,16 @@
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-const Switch Switches[] = {
+enum SwitchIds
+{
+    FP_RANGE = 0,
+    FP_NO_DROP_ZERO,
+    FP_MAX
+};
+
+const Switch Switches[FP_MAX] = {
     {
-        "Range",
+        FP_RANGE,
         'r',
         "range",
         "Specify a start address and a range."
@@ -39,10 +46,10 @@ const Switch Switches[] = {
         2,
     },
     {
-        "Drop",
+        FP_NO_DROP_ZERO,
         0,
         "no-drop",
-        "Do not drop values with no occurrence.",
+        "Do not drop values with zero occurrences.",
         true,
         0,
     },
@@ -75,22 +82,19 @@ public:
     int parse(int argc, char **argv)
     {
         Parser psr;
-        psr.initializeSwitches(Switches, sizeof(Switches) / sizeof(Switches[0]));
-
-        if (psr.parse(argc, argv) < 0)
+        if (psr.parse(argc, argv, Switches, FP_MAX) < 0)
             return 1;
 
-        if (psr.isPresent("r"))
+        if (psr.isPresent(FP_RANGE))
         {
-            ParseOption *op   = psr.getOption("r");
-            m_addressRange[0] = op->getInt(0, 16);
-            m_addressRange[1] = op->getInt(1, 10);
+            m_addressRange[0] = psr.getValueInt(FP_RANGE, 0, SK_NPOS32, 16);
+            m_addressRange[1] = psr.getValueInt(FP_RANGE, 1, SK_NPOS32, 10);
         }
 
-        m_includeZero = psr.isPresent("no-drop");
+        m_includeZero = psr.isPresent(FP_NO_DROP_ZERO);
 
-        using List = Parser::List;
-        List &args = psr.getArgList();
+        using StringArray = Parser::StringArray;
+        StringArray &args = psr.getArgList();
         if (args.empty())
         {
             skLogf(LD_ERROR, "No files supplied\n");

@@ -26,18 +26,27 @@
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-const Switch Switches[] = {
+enum SwitchIds
+{
+    HP_MARK = 0,
+    HP_NOCOLOR,
+    HP_FLAGS,
+    HP_RANGE,
+    HP_CSV,
+    HP_MAX
+};
+
+const Switch Switches[HP_MAX] = {
     {
-        "mark",
+        HP_MARK,
         'm',
         "mark",
-        "Mark a specific hexadecimal sequence."
-        " Input is in base 16.",
+        "Mark a specific hexadecimal sequence.",
         true,
         1,
     },
     {
-        "NoColor",
+        HP_NOCOLOR,
         0,
         "no-color",
         "Remove color output.",
@@ -45,7 +54,7 @@ const Switch Switches[] = {
         0,
     },
     {
-        "Flags",
+        HP_FLAGS,
         'f',
         "flags",
         "Specify the print flags. 1|2|4|8|16",
@@ -53,25 +62,15 @@ const Switch Switches[] = {
         1,
     },
     {
-        "Base",
-        'b',
-        "base",
-        "Specify the base for the print out."
-        " The input is in base 16.",
-        true,
-        1,
-    },
-    {
-        "Range",
+        HP_RANGE,
         'r',
         "range",
-        "Specify a start address and a range."
-        " The input is in base 16.",
+        "Specify a start address and a range.",
         true,
         2,
     },
     {
-        "CSV",
+        HP_CSV,
         0,
         "csv",
         "Converts the output to a comma separated buffer",
@@ -91,7 +90,7 @@ private:
 
 public:
     Application() :
-        m_code(0),
+        m_code(-1),
         m_addressRange(),
         m_flags(PF_DEFAULT | PF_FULLADDR),
         m_csv(false)
@@ -107,37 +106,27 @@ public:
     int parse(int argc, char **argv)
     {
         Parser psr;
-        psr.initializeSwitches(Switches, sizeof(Switches) / sizeof(Switches[0]));
-
-        if (psr.parse(argc, argv) < 0)
+        if (psr.parse(argc, argv, Switches, HP_MAX) < 0)
             return 1;
 
-        if (psr.isPresent("flags"))
-        {
-            ParseOption *op = psr.getOption("flags");
-            m_flags         = op->getInt();
-        }
+        if (psr.isPresent(HP_FLAGS))
+            m_flags = psr.getValueInt(HP_FLAGS, 0, PF_DEFAULT | PF_FULLADDR, 10);
 
-        if (psr.isPresent("mark"))
-        {
-            ParseOption *op = psr.getOption("mark");
-            m_code          = op->getInt64(0, 16);
-        }
+        if (psr.isPresent(HP_MARK))
+            m_code = psr.getValueInt64(HP_MARK, 0, SK_NPOS, 16);
 
-        if (psr.isPresent("no-color"))
+        if (psr.isPresent(HP_NOCOLOR))
             m_flags &= ~PF_COLORIZE;
 
-        m_csv = psr.isPresent("csv");
-
-        if (psr.isPresent("r"))
+        m_csv = psr.isPresent(HP_CSV);
+        if (psr.isPresent(HP_RANGE))
         {
-            ParseOption *op   = psr.getOption("r");
-            m_addressRange[0] = op->getInt(0, 16);
-            m_addressRange[1] = op->getInt(1, 10);
+            m_addressRange[0] = psr.getValueInt(HP_RANGE, 0, SK_NPOS32, 16);
+            m_addressRange[1] = psr.getValueInt(HP_RANGE, 1, SK_NPOS32, 10);
         }
 
-        using List = Parser::List;
-        List &args = psr.getArgList();
+        using StringArray = Parser::StringArray;
+        StringArray &args = psr.getArgList();
         if (args.empty())
         {
             skLogf(LD_ERROR, "No files supplied\n");

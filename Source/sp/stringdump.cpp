@@ -26,9 +26,23 @@
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-const Switch Switches[] = {
+
+enum SwitchIds
+{
+    SP_LOWER = 0,
+    SP_UPPER,
+    SP_DIGITS,
+    SP_MIXED,
+    SP_MERGE,
+    SP_LENGTH,
+    SP_RANGE,
+    SP_SHOW_ADDRESS,
+    SP_MAX
+};
+
+const Switch Switches[SP_MAX] = {
     {
-        "Lower",
+        SP_LOWER,
         'l',
         "lowercase",
         "Print the [a-z] character set.",
@@ -36,7 +50,7 @@ const Switch Switches[] = {
         0,
     },
     {
-        "Upper",
+        SP_UPPER,
         'u',
         "uppercase",
         "Print the [A-Z] character set.",
@@ -44,7 +58,7 @@ const Switch Switches[] = {
         0,
     },
     {
-        "Digits",
+        SP_DIGITS,
         'd',
         "digit",
         "Print the [0-9] character set.",
@@ -52,7 +66,7 @@ const Switch Switches[] = {
         0,
     },
     {
-        "Mixed",
+        SP_MIXED,
         'a',
         "mixed",
         "Print the [a-zA-Z0-9] character set.",
@@ -60,7 +74,7 @@ const Switch Switches[] = {
         0,
     },
     {
-        "Merge",
+        SP_MERGE,
         'm',
         "merge",
         "Merge the string printout",
@@ -68,7 +82,7 @@ const Switch Switches[] = {
         1,
     },
     {
-        "Number",
+        SP_LENGTH,
         'n',
         "number",
         "Set a minimum string length",
@@ -76,16 +90,15 @@ const Switch Switches[] = {
         1,
     },
     {
-        "Range",
+        SP_RANGE,
         'r',
         "range",
-        "Specify a start address and a range."
-        " The input is in base 16.",
+        "Specify a start address and a range.",
         true,
         2,
     },
     {
-        "ShowLocation",
+        SP_SHOW_ADDRESS,
         0,
         "show-address",
         "Display the start address of each string.",
@@ -131,43 +144,34 @@ public:
     int parse(int argc, char **argv)
     {
         Parser psr;
-        psr.initializeSwitches(Switches, sizeof Switches / sizeof Switches[0]);
-
-        if (psr.parse(argc, argv) < 0)
+        if (psr.parse(argc, argv, Switches, SP_MAX) < 0)
             return 1;
 
-        m_logAddress = psr.isPresent("show-address");
+        m_logAddress = psr.isPresent(SP_SHOW_ADDRESS);
 
-        m_mixed = psr.isPresent("a");
+        m_mixed = psr.isPresent(SP_MIXED);
         if (!m_mixed)
         {
-            m_lowercaseCase = psr.isPresent("l");
-            m_upperCase     = psr.isPresent("u");
+            m_lowercaseCase = psr.isPresent(SP_LOWER);
+            m_upperCase     = psr.isPresent(SP_UPPER);
         }
 
-        m_digit = psr.isPresent("d");
+        m_digit = psr.isPresent(SP_DIGITS);
 
-        if (!m_logAddress && psr.isPresent("m"))
+        if (!m_logAddress && psr.isPresent(SP_MERGE))
+            m_merge         = psr.getValueInt(SP_MERGE, 0, 0);
+
+        if (psr.isPresent(SP_LENGTH))
+            m_number = psr.getValueInt(SP_LENGTH, 0, 0);
+
+        if (psr.isPresent(SP_RANGE))
         {
-            ParseOption *op = psr.getOption("m");
-            m_merge         = op->getInt();
+            m_addressRange[0] = psr.getValueInt(SP_RANGE, 0, SK_NPOS32, 16);
+            m_addressRange[1] = psr.getValueInt(SP_RANGE, 1, SK_NPOS32, 10);
         }
 
-        if (psr.isPresent("n"))
-        {
-            ParseOption *op = psr.getOption("n");
-            m_number        = op->getInt();
-        }
-
-        if (psr.isPresent("r"))
-        {
-            ParseOption *op   = psr.getOption("r");
-            m_addressRange[0] = op->getInt(0, 16);
-            m_addressRange[1] = op->getInt(1, 10);
-        }
-
-        using List = Parser::List;
-        List &args = psr.getArgList();
+        using StringArray = Parser::StringArray;
+        StringArray &args = psr.getArgList();
         if (args.empty())
         {
             skLogf(LD_ERROR, "No files supplied\n");
