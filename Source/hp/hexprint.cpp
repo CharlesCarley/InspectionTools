@@ -41,7 +41,8 @@ const Switch Switches[HP_MAX] = {
         HP_MARK,
         'm',
         "mark",
-        "Mark a specific hexadecimal sequence.",
+        "Mark a specific hexadecimal sequence.\n"
+        "  - Base 16 [00-FFFFFFFF]",
         true,
         1,
     },
@@ -72,9 +73,9 @@ const Switch Switches[HP_MAX] = {
         'r',
         "range",
         "Specify a start address and a range.\n"
-        "Arguments: [address, range]\n"
-        "  - address Base 16 [0 - file length]\n"
-        "  - range   Base 10 [0 - file length]\n",
+        "  - Arguments: [address, range]\n"
+        "    - Address Base 16 [0 - file length]\n"
+        "    - Range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -138,7 +139,7 @@ public:
         StringArray &args = psr.getArgList();
         if (args.empty())
         {
-            skLogf(LD_ERROR, "No files supplied\n");
+            skLogf(LD_INFO, "No file supplied\n");
             return 1;
         }
 

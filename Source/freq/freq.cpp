@@ -44,8 +44,8 @@ const Switch Switches[FP_MAX] = {
         "range",
         "Specify a start address and a range.\n"
         "  - Arguments: [address, range]\n"
-        "    - address Base 16 [0 - file length]\n"
-        "    - range   Base 10 [0 - file length]\n",
+        "    - Address Base 16 [0 - file length]\n"
+        "    - Range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -71,8 +71,8 @@ const Switch Switches[FP_MAX] = {
         "graph",
         "Display a text based bar graph.\n"
         "  - Arguments: [width, height]\n"
-        "    - width  [16 - 128]\n"
-        "    - height [16 - 256]\n",
+        "    - Width  [1 - 128]\n"
+        "    - Height [10 - 256]\n",
         true,
         2,
     },
@@ -131,8 +131,8 @@ public:
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-            m_width  = skClamp<SKsize>(m_width, 16, 128);
-            m_height = skClamp<SKsize>(m_height, 16, 256);
+            m_width  = skClamp<SKsize>(m_width, 1, 128);
+            m_height = skClamp<SKsize>(m_height, 10, 256);
         }
 
         m_color       = !psr.isPresent(FP_NO_COLOR);
@@ -142,7 +142,7 @@ public:
         StringArray &args = psr.getArgList();
         if (args.empty())
         {
-            skLogf(LD_ERROR, "No files supplied\n");
+            skLogf(LD_INFO, "No file supplied\n");
             return 1;
         }
 

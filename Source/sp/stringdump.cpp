@@ -29,13 +29,14 @@ using namespace skCommandLine;
 enum SwitchIds
 {
     SP_SHOW_ADDRESS=0,
+    SP_NO_WHITE_SPACE,
     SP_LOWER,
     SP_UPPER,
     SP_DIGITS,
-    SP_HEX,
-    SP_BASE64,
     SP_MERGE,
     SP_LENGTH,
+    SP_HEX,
+    SP_BASE64,
     SP_RANGE,
     SP_MAX
 };
@@ -46,6 +47,14 @@ const Switch Switches[SP_MAX] = {
         0,
         "show-address",
         "Display the start address of each string.",
+        true,
+        0,
+    },
+    {
+        SP_NO_WHITE_SPACE,
+        0,
+        "no-whitespace",
+        "Exclude whitespace.\n",
         true,
         0,
     },
@@ -74,6 +83,24 @@ const Switch Switches[SP_MAX] = {
         0,
     },
     {
+        SP_MERGE,
+        'm',
+        "merge",
+        "Merge the string printout into a large block.\n"
+        "  - Arguments: column max [0-N]",
+        true,
+        1,
+    },
+    {
+        SP_LENGTH,
+        'n',
+        "number",
+        "Set a minimum string length.\n"
+        "  - Minimum qualifier [0-N]",
+        true,
+        1,
+    },
+    {
         SP_HEX,
         0,
         "hex",
@@ -92,29 +119,13 @@ const Switch Switches[SP_MAX] = {
         0,
     },
     {
-        SP_MERGE,
-        'm',
-        "merge",
-        "Merge the string printout",
-        true,
-        1,
-    },
-    {
-        SP_LENGTH,
-        'n',
-        "number",
-        "Set a minimum string length",
-        true,
-        1,
-    },
-    {
         SP_RANGE,
         'r',
         "range",
         "Specify a start address and a range.\n"
-        "Arguments: [address, range]\n"
-        "      - address Base 16 [0 - file length]\n"
-        "      - range   Base 10 [0 - file length]\n",
+        "  - Arguments: [address, range]\n"
+        "    - Address Base 16 [0 - file length]\n"
+        "    - Range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -132,6 +143,7 @@ private:
     bool         m_hex;
     bool         m_base64;
     bool         m_logAddress;
+    bool         m_noWhiteSpace;
     SKuint32     m_merge;
 
 public:
@@ -144,6 +156,7 @@ public:
         m_hex(false),
         m_base64(),
         m_logAddress(false),
+        m_noWhiteSpace(false),
         m_merge(SK_NPOS32)
     {
         m_addressRange[0] = SK_NPOS32;
@@ -166,6 +179,7 @@ public:
         m_upperCase     = psr.isPresent(SP_UPPER);
         m_hex           = psr.isPresent(SP_HEX);
         m_base64        = psr.isPresent(SP_BASE64);
+        m_noWhiteSpace  = psr.isPresent(SP_NO_WHITE_SPACE); 
 
         if (!m_logAddress && psr.isPresent(SP_MERGE))
             m_merge = psr.getValueInt(SP_MERGE, 0, 0);
@@ -183,7 +197,7 @@ public:
         StringArray &args = psr.getArgList();
         if (args.empty())
         {
-            skLogf(LD_ERROR, "No files supplied\n");
+            skLogf(LD_INFO, "No file supplied\n");
             return 1;
         }
 
@@ -211,7 +225,12 @@ public:
             return result;
         }
         else if (!m_lowercaseCase && !m_upperCase && !m_digit)
-            return ch >= 32 && ch < 127;
+        {
+            if (m_noWhiteSpace)
+                return ch >= 33 && ch < 127;
+            else
+                return ch >= 32 && ch < 127;
+        }
 
         if (m_lowercaseCase)
             result = ch >= 'a' && ch <= 'z';
