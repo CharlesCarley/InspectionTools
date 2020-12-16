@@ -28,18 +28,27 @@ using namespace skCommandLine;
 
 enum SwitchIds
 {
-    SP_LOWER = 0,
+    SP_SHOW_ADDRESS=0,
+    SP_LOWER,
     SP_UPPER,
     SP_DIGITS,
-    SP_MIXED,
+    SP_HEX,
+    SP_BASE64,
     SP_MERGE,
     SP_LENGTH,
     SP_RANGE,
-    SP_SHOW_ADDRESS,
     SP_MAX
 };
 
 const Switch Switches[SP_MAX] = {
+    {
+        SP_SHOW_ADDRESS,
+        0,
+        "show-address",
+        "Display the start address of each string.",
+        true,
+        0,
+    },
     {
         SP_LOWER,
         'l',
@@ -65,10 +74,20 @@ const Switch Switches[SP_MAX] = {
         0,
     },
     {
-        SP_MIXED,
-        'a',
-        "mixed",
-        "Print the [a-zA-Z0-9] character set.",
+        SP_HEX,
+        0,
+        "hex",
+        "Print the [0-9Aa-Ff] character set.\n"
+        "  - Takes precedence over other filters.",
+        true,
+        0,
+    },
+    {
+        SP_BASE64,
+        0,
+        "base64",
+        "Print the [0-9Aa-Zz+/=] character set.\n"
+        "  - Takes precedence over other filters.",
         true,
         0,
     },
@@ -99,14 +118,6 @@ const Switch Switches[SP_MAX] = {
         true,
         2,
     },
-    {
-        SP_SHOW_ADDRESS,
-        0,
-        "show-address",
-        "Display the start address of each string.",
-        true,
-        0,
-    },
 };
 
 class Application
@@ -118,8 +129,8 @@ private:
     bool         m_upperCase;
     bool         m_lowercaseCase;
     bool         m_digit;
-    bool         m_mixed;
-    bool         m_special;
+    bool         m_hex;
+    bool         m_base64;
     bool         m_logAddress;
     SKuint32     m_merge;
 
@@ -130,8 +141,8 @@ public:
         m_upperCase(false),
         m_lowercaseCase(false),
         m_digit(false),
-        m_mixed(false),
-        m_special(false),
+        m_hex(false),
+        m_base64(),
         m_logAddress(false),
         m_merge(SK_NPOS32)
     {
@@ -149,16 +160,12 @@ public:
         if (psr.parse(argc, argv, Switches, SP_MAX) < 0)
             return 1;
 
-        m_logAddress = psr.isPresent(SP_SHOW_ADDRESS);
-
-        m_mixed = psr.isPresent(SP_MIXED);
-        if (!m_mixed)
-        {
-            m_lowercaseCase = psr.isPresent(SP_LOWER);
-            m_upperCase     = psr.isPresent(SP_UPPER);
-        }
-
-        m_digit = psr.isPresent(SP_DIGITS);
+        m_logAddress    = psr.isPresent(SP_SHOW_ADDRESS);
+        m_digit         = psr.isPresent(SP_DIGITS);
+        m_lowercaseCase = psr.isPresent(SP_LOWER);
+        m_upperCase     = psr.isPresent(SP_UPPER);
+        m_hex           = psr.isPresent(SP_HEX);
+        m_base64        = psr.isPresent(SP_BASE64);
 
         if (!m_logAddress && psr.isPresent(SP_MERGE))
             m_merge = psr.getValueInt(SP_MERGE, 0, 0);
@@ -192,22 +199,26 @@ public:
     bool filterChar(char ch)
     {
         bool result = false;
-        if (m_mixed)
-            return ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9';
-        if (m_special)
-            result = ch == '@' || ch == '=' || ch == '_' || ch == '(' || ch == ')' || ch == '{' || ch == '}';
-
-        if (!result)
+        if (m_base64)
         {
-            if (m_lowercaseCase)
-                result = ch >= 'a' && ch <= 'z';
-            else if (m_upperCase)
-                result = ch >= 'A' && ch <= 'Z';
-            else if (m_digit)
-                result = ch >= '0' && ch <= '9';
-            else
-                result = ch >= 32 && ch < 127;
+            result = ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch >= '0' && ch <= '9';
+            result = result || ch == '+' || ch == '/' || ch == '=';
+            return result;
         }
+        else if (m_hex)
+        {
+            result = ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F' || ch >= '0' && ch <= '9';
+            return result;
+        }
+        else if (!m_lowercaseCase && !m_upperCase && !m_digit)
+            return ch >= 32 && ch < 127;
+
+        if (m_lowercaseCase)
+            result = ch >= 'a' && ch <= 'z';
+        if (m_upperCase)
+            result = result || ch >= 'A' && ch <= 'Z';
+        if (m_digit)
+            result = result || ch >= '0' && ch <= '9';
         return result;
     }
 

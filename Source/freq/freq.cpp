@@ -43,9 +43,9 @@ const Switch Switches[FP_MAX] = {
         'r',
         "range",
         "Specify a start address and a range.\n"
-        "Arguments: [address, range]\n"
-        "      - address Base 16 [0 - file length]\n"
-        "      - range   Base 10 [0 - file length]\n",
+        "  - Arguments: [address, range]\n"
+        "    - address Base 16 [0 - file length]\n"
+        "    - range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -70,9 +70,9 @@ const Switch Switches[FP_MAX] = {
         'g',
         "graph",
         "Display a text based bar graph.\n"
-        "Arguments: [width, height]\n"
-        "      - width  [16 - 128]\n"
-        "      - height [16 - 256]\n",
+        "  - Arguments: [width, height]\n"
+        "    - width  [16 - 128]\n"
+        "    - height [16 - 256]\n",
         true,
         2,
     },
@@ -157,8 +157,7 @@ public:
 
     int print()
     {
-        SKuint8  buffer[1025];
-        skString tmpStr;
+        SKuint8 buffer[1025];
 
         SKsize n;
         SKsize a, r;
@@ -169,9 +168,7 @@ public:
         if (m_addressRange[0] != SK_NPOS32)
             m_stream.seek(a, SEEK_SET);
         else
-        {
             r = n;
-        }
 
         SKsize br, tr = 0, i;
         while (!m_stream.eof() && tr < r)
@@ -185,12 +182,15 @@ public:
                     const auto ch = (unsigned char)buffer[i];
                     if (ch != 0 || m_includeZero)
                         m_freqBuffer[ch]++;
-
-                    if (m_max < m_freqBuffer[ch])
-                        m_max = m_freqBuffer[ch];
                 }
             }
             tr += br;
+        }
+
+        for (i = 0; i < 256; ++i)
+        {
+            if (m_max < m_freqBuffer[i])
+                m_max = m_freqBuffer[i];
         }
 
         if (m_csv)
