@@ -32,8 +32,8 @@ enum SwitchIds
 {
     FP_RANGE = 0,
     FP_NO_DROP_ZERO,
-    FP_TEXT_GRAPH,
     FP_NO_COLOR,
+    FP_TEXT_GRAPH,
     FP_MAX
 };
 
@@ -56,21 +56,23 @@ const Switch Switches[FP_MAX] = {
         0,
     },
     {
+        FP_NO_COLOR,
+        0,
+        "no-color",
+        "Disable color printing.",
+        true,
+        0,
+    },
+    {
         FP_TEXT_GRAPH,
         'g',
         "graph",
         "Display a text based bar graph.\n"
-        "Arguments [rows, characters per row]",
+        "Arguments: [width, height]\n"
+        "      - width  [16 - 128]\n"
+        "      - height [16 - 256]\n",
         true,
         2,
-    },
-    {
-        FP_NO_COLOR,
-        0,
-        "no-color",
-        "Disable color printing",
-        true,
-        0,
     },
 };
 
@@ -199,17 +201,11 @@ public:
 
     void printGraph()
     {
-        const SKsize SubDivision = m_width;
-        const SKsize Max         = 256;
-        const SKsize PerCol      = m_height;
-        const SKsize MaxY        = (PerCol * m_width);
-        const SKsize NumCol      = m_width;
-
         double codes[4] = {
-            PerCol * 0.2,
-            PerCol * 0.4,
-            PerCol * 0.6,
-            PerCol * 0.8,
+            m_height * 0.2,
+            m_height * 0.4,
+            m_height * 0.6,
+            m_height * 0.8,
         };
 
         SKsize y = 0, x = 0, i = 0, j = 0;
@@ -224,10 +220,10 @@ public:
                 if (y == 0)
                 {
                     j = i + m_width;
-                    if (j > 256)
-                        j -= (j - 256);
+                    if (j > 255)
+                        j -= (j - 255);
 
-                    printf("\tBytes [%d - %d]\n", (int)i, (int)j);
+                    printf("\tBytes [%02X - %02X]\n", (int)i, (int)j);
 
                     for (j = 0; j < maxLeft + 1; ++j)
                         putchar(' ');
@@ -263,15 +259,14 @@ public:
 
                     if (val > ypos)
                     {
-                        char       cc;
-                        const auto step = (double)(PerCol - y % PerCol);
-                        if (step < codes[0])
+                        char cc;
+                        if (ypos < codes[0])
                             cc = '@';
-                        else if (step < codes[1])
+                        else if (ypos < codes[1])
                             cc = '+';
-                        else if (step < codes[2])
+                        else if (ypos < codes[2])
                             cc = '^';
-                        else if (step < codes[3])
+                        else if (ypos < codes[3])
                             cc = ':';
                         else
                             cc = '.';
@@ -315,10 +310,8 @@ public:
             }
             putchar('\n');
             putchar('\n');
-
             i += m_width;
         }
-
         putchar('\n');
     }
 
