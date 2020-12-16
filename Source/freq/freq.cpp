@@ -182,16 +182,10 @@ public:
 
     void printGraph()
     {
-        SKsize max = 0, min = SK_NPOS, i, r;
+        SKsize max = 0, i, r;
         for (i = 0; i < 256; ++i)
-        {
             max = skMax<SKsize>(max, m_freqBuffer[i]);
 
-            if (m_freqBuffer[i] != 0)
-                min = skMin<SKsize>(min, m_freqBuffer[i]);
-        }
-
-        // 256 / 64 == 4 rows
         const SKsize SubDivision = m_rows;
         const SKsize Max         = 256;
         const SKsize PerCol      = m_charsPerRow;
@@ -212,7 +206,6 @@ public:
         for (y = 0; y < MaxY; ++y)
         {
             skDebugger::writeColor(CS_WHITE, CS_BLACK);
-
             if (y > 0 && y % PerCol == 0)
             {
                 printf("   +");
@@ -222,18 +215,18 @@ public:
                 }
 
                 ++r;
-
                 if (r >= m_rows)
                     break;
+
                 s = 0;
             }
             else
             {
-                SKsize bufferOffs = r * NumCol;
+                const SKsize bufferOffs = r * NumCol;
                 if (s == 0)
                 {
                     skDebugger::writeColor(CS_LIGHT_GREY);
-                    printf("\n    Bits: [%i-%i]\n", (int)bufferOffs, (int)(bufferOffs + NumCol));
+                    printf("\n    Bytes: [%i-%i]\n", (int)bufferOffs, (int)(bufferOffs + NumCol));
                 }
 
                 skDebugger::writeColor(CS_GREY);
@@ -242,8 +235,8 @@ public:
                 else
                     printf("    ");
 
-                char   cc;
-                double step = PerCol - (s++ % PerCol);
+                char       cc;
+                const auto step = (double)(PerCol - s++ % PerCol);
                 if (step < codes[0])
                     cc = '@';
                 else if (step < codes[1])
@@ -254,7 +247,7 @@ public:
                     cc = ':';
                 else
                     cc = '.';
-                double yoffs = (PerCol * (r + 1)) - (y + 1);
+                const auto yoffs = (double)(PerCol * (r + 1) - (y + 1));
 
                 for (x = 0; x < NumCol; ++x)
                 {
@@ -262,9 +255,9 @@ public:
                     if (i >= 256)
                         break;
 
-                    double val = (double)m_freqBuffer[i];
+                    auto val = (double)m_freqBuffer[i];
                     val /= (double)max;
-                    val *= PerCol;
+                    val *= (double)PerCol;
 
                     if (val > yoffs)
                     {
@@ -283,6 +276,7 @@ public:
         }
         printf("\n");
     }
+
     void printCSV()
     {
         for (SKsize i = 0; i < 256; ++i)
