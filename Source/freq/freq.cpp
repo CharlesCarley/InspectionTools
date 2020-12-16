@@ -33,6 +33,7 @@ enum SwitchIds
     FP_RANGE = 0,
     FP_NO_DROP_ZERO,
     FP_TEXT_GRAPH,
+    FP_NO_COLOR,
     FP_MAX
 };
 
@@ -63,6 +64,14 @@ const Switch Switches[FP_MAX] = {
         true,
         2,
     },
+    {
+        FP_NO_COLOR,
+        0,
+        "no-color",
+        "Disable color printing",
+        true,
+        0,
+    },
 };
 
 class Application
@@ -72,18 +81,22 @@ private:
     SKuint32     m_addressRange[2];
     bool         m_includeZero;
     SKuint64     m_freqBuffer[256];
-    SKsize       m_rows;
-    SKsize       m_charsPerRow;
+    SKuint64     m_max;
+    SKsize       m_width;
+    SKsize       m_height;
     bool         m_csv;
+    bool         m_color;
 
 public:
     Application() :
         m_addressRange(),
         m_includeZero(false),
         m_freqBuffer(),
-        m_rows(3),
-        m_charsPerRow(10),
-        m_csv(true)
+        m_max(0),
+        m_width(64),
+        m_height(16),
+        m_csv(true),
+        m_color(true)
     {
         m_addressRange[0] = SK_NPOS32;
         m_addressRange[1] = SK_NPOS32;
@@ -111,13 +124,14 @@ public:
         {
             m_csv = false;
 
-            m_rows        = psr.getValueInt(FP_TEXT_GRAPH, 0, 3);
-            m_charsPerRow = psr.getValueInt(FP_TEXT_GRAPH, 1, 10);
+            m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
+            m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-            m_rows        = skClamp<SKsize>(m_rows, 2, 8);
-            m_charsPerRow = skClamp<SKsize>(m_charsPerRow, 5, 80);
+            m_width  = skClamp<SKsize>(m_width, 16, 128);
+            m_height = skClamp<SKsize>(m_height, 16, 256);
         }
 
+        m_color       = !psr.isPresent(FP_NO_COLOR);
         m_includeZero = psr.isPresent(FP_NO_DROP_ZERO);
 
         using StringArray = Parser::StringArray;
@@ -167,6 +181,9 @@ public:
                     const auto ch = (unsigned char)buffer[i];
                     if (ch != 0 || m_includeZero)
                         m_freqBuffer[ch]++;
+
+                    if (m_max < m_freqBuffer[ch])
+                        m_max = m_freqBuffer[ch];
                 }
             }
             tr += br;
@@ -182,16 +199,11 @@ public:
 
     void printGraph()
     {
-        SKsize max = 0, i, r;
-        for (i = 0; i < 256; ++i)
-            max = skMax<SKsize>(max, m_freqBuffer[i]);
-
-        const SKsize SubDivision = m_rows;
+        const SKsize SubDivision = m_width;
         const SKsize Max         = 256;
-        const SKsize PerCol      = m_charsPerRow;
-        const SKsize MaxY        = (PerCol * SubDivision) + SubDivision;
-
-        const SKsize NumCol = Max / SubDivision;
+        const SKsize PerCol      = m_height;
+        const SKsize MaxY        = (PerCol * m_width);
+        const SKsize NumCol      = m_width;
 
         double codes[4] = {
             PerCol * 0.2,
@@ -200,81 +212,125 @@ public:
             PerCol * 0.8,
         };
 
-        r = 0;
-        SKsize y, x, s = 0;
+        SKsize y = 0, x = 0, i = 0, j = 0;
+        bool   done = false;
 
-        for (y = 0; y < MaxY; ++y)
+        SKsize maxLeft = countPlaces(m_max) + 2;
+
+        while (i < 256)
         {
-            skDebugger::writeColor(CS_WHITE, CS_BLACK);
-            if (y > 0 && y % PerCol == 0)
+            for (y = 0; y < m_height; ++y)
             {
-                printf("   +");
-                for (x = 0; x < NumCol; ++x)
+                if (y == 0)
                 {
-                    printf("-");
+                    j = i + m_width;
+                    if (j > 256)
+                        j -= (j - 256);
+
+                    printf("\tBytes [%d - %d]\n", (int)i, (int)j);
+
+                    for (j = 0; j < maxLeft + 1; ++j)
+                        putchar(' ');
+                    putchar('+');
+                    for (x = 0; x < m_width; ++x)
+                        putchar('-');
+                    putchar('\n');
                 }
 
-                ++r;
-                if (r >= m_rows)
-                    break;
-
-                s = 0;
-            }
-            else
-            {
-                const SKsize bufferOffs = r * NumCol;
-                if (s == 0)
+                const SKsize ypos = (m_height - y);
+                if (ypos % 4 == 0)
                 {
-                    skDebugger::writeColor(CS_LIGHT_GREY);
-                    printf("\n    Bytes: [%i-%i]\n", (int)bufferOffs, (int)(bufferOffs + NumCol));
+                    double d = (double)m_max / (double)(y + 1);
+
+                    printf("%.02f", d);
+                    SKsize k = maxLeft - countPlaces((SKsize)d);
+                    for (j = 0; j < k - 2; ++j)
+                        putchar(' ');
                 }
-
-                skDebugger::writeColor(CS_GREY);
-                if (s % 3 == 0)
-                    printf("%3i ", (int)s);
                 else
-                    printf("    ");
-
-                char       cc;
-                const auto step = (double)(PerCol - s++ % PerCol);
-                if (step < codes[0])
-                    cc = '@';
-                else if (step < codes[1])
-                    cc = '+';
-                else if (step < codes[2])
-                    cc = '^';
-                else if (step < codes[3])
-                    cc = ':';
-                else
-                    cc = '.';
-                const auto yoffs = (double)(PerCol * (r + 1) - (y + 1));
-
-                for (x = 0; x < NumCol; ++x)
                 {
-                    i = x + bufferOffs;
-                    if (i >= 256)
-                        break;
+                    for (j = 0; j < maxLeft + 1; ++j)
+                        putchar(' ');
+                }
+                putchar('|');
 
-                    auto val = (double)m_freqBuffer[i];
-                    val /= (double)max;
-                    val *= (double)PerCol;
+                j = i;
+                for (x = 0; x < m_width && j < 256; ++x, ++j)
+                {
+                    auto val = (double)m_freqBuffer[j];
+                    val /= (double)m_max;
+                    val *= (double)m_height;
 
-                    if (val > yoffs)
+                    if (val > ypos)
                     {
-                        skDebugger::writeColor(CS_YELLOW);
-                        printf("%c", cc);
+                        char       cc;
+                        const auto step = (double)(PerCol - y % PerCol);
+                        if (step < codes[0])
+                            cc = '@';
+                        else if (step < codes[1])
+                            cc = '+';
+                        else if (step < codes[2])
+                            cc = '^';
+                        else if (step < codes[3])
+                            cc = ':';
+                        else
+                            cc = '.';
+
+                        if (m_color)
+                        {
+                            if (cc == '@')
+                                skDebugger::writeColor(skConsoleColorSpace::CS_DARKYELLOW);
+                            else
+                                skDebugger::writeColor(skConsoleColorSpace::CS_YELLOW);
+                        }
+                        putchar(cc);
                     }
                     else
                     {
-                        skDebugger::writeColor(CS_WHITE);
-                        printf(" ");
+                        if (m_color)
+                            skDebugger::writeColor(CS_WHITE);
+                        putchar(' ');
                     }
                 }
-                skDebugger::writeColor(CS_WHITE);
-                printf("\n");
+
+                if (m_color)
+                    skDebugger::writeColor(CS_WHITE);
+                putchar('\n');
             }
+            for (j = 0; j < maxLeft + 1; ++j)
+                putchar(' ');
+            putchar('+');
+            for (x = 0; x < m_width; ++x)
+                putchar('-');
+            putchar('\n');
+
+            for (j = 0; j < maxLeft + 2; ++j)
+                putchar(' ');
+
+            j = i;
+            for (x = 0; x < m_width && j < 256; ++x, ++j)
+            {
+                if (x % 4 == 0)
+                    printf("%02X  ", (int)j);
+            }
+            putchar('\n');
+            putchar('\n');
+
+            i += m_width;
         }
-        printf("\n");
+
+        putchar('\n');
+    }
+
+    SKsize countPlaces(SKsize n)
+    {
+        SKsize i = 0;
+        while (n > 0)
+        {
+            ++i;
+            n /= 10;
+        }
+        return i;
     }
 
     void printCSV()
