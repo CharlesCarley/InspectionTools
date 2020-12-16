@@ -32,6 +32,7 @@ enum SwitchIds
 {
     FP_RANGE = 0,
     FP_NO_DROP_ZERO,
+    FP_TEXT_GRAPH,
     FP_MAX
 };
 
@@ -40,8 +41,8 @@ const Switch Switches[FP_MAX] = {
         FP_RANGE,
         'r',
         "range",
-        "Specify a start address and a range."
-        " The input is in base 16.",
+        "Specify a start address and a range.\n"
+        "The input is in base 16.",
         true,
         2,
     },
@@ -53,6 +54,15 @@ const Switch Switches[FP_MAX] = {
         true,
         0,
     },
+    {
+        FP_TEXT_GRAPH,
+        'g',
+        "graph",
+        "Display a text based bar graph.\n"
+        "Arguments [rows, characters per row]",
+        true,
+        2,
+    },
 };
 
 class Application
@@ -62,12 +72,18 @@ private:
     SKuint32     m_addressRange[2];
     bool         m_includeZero;
     SKuint64     m_freqBuffer[256];
+    SKsize       m_rows;
+    SKsize       m_charsPerRow;
+    bool         m_csv;
 
 public:
     Application() :
         m_addressRange(),
         m_includeZero(false),
-        m_freqBuffer()
+        m_freqBuffer(),
+        m_rows(3),
+        m_charsPerRow(10),
+        m_csv(true)
     {
         m_addressRange[0] = SK_NPOS32;
         m_addressRange[1] = SK_NPOS32;
@@ -89,6 +105,17 @@ public:
         {
             m_addressRange[0] = psr.getValueInt(FP_RANGE, 0, SK_NPOS32, 16);
             m_addressRange[1] = psr.getValueInt(FP_RANGE, 1, SK_NPOS32, 10);
+        }
+
+        if (psr.isPresent(FP_TEXT_GRAPH))
+        {
+            m_csv = false;
+
+            m_rows        = psr.getValueInt(FP_TEXT_GRAPH, 0, 3);
+            m_charsPerRow = psr.getValueInt(FP_TEXT_GRAPH, 1, 10);
+
+            m_rows        = skClamp<SKsize>(m_rows, 2, 8);
+            m_charsPerRow = skClamp<SKsize>(m_charsPerRow, 5, 80);
         }
 
         m_includeZero = psr.isPresent(FP_NO_DROP_ZERO);
@@ -138,19 +165,132 @@ public:
                 for (i = 0; i < br; ++i)
                 {
                     const auto ch = (unsigned char)buffer[i];
-                    m_freqBuffer[ch]++;
+                    if (ch != 0 || m_includeZero)
+                        m_freqBuffer[ch]++;
                 }
             }
             tr += br;
         }
 
+        if (m_csv)
+            printCSV();
+        else
+            printGraph();
+
+        return 0;
+    }
+
+    void printGraph()
+    {
+        SKsize max = 0, min = SK_NPOS, i, r;
         for (i = 0; i < 256; ++i)
+        {
+            max = skMax<SKsize>(max, m_freqBuffer[i]);
+
+            if (m_freqBuffer[i] != 0)
+                min = skMin<SKsize>(min, m_freqBuffer[i]);
+        }
+
+        // 256 / 64 == 4 rows
+        const SKsize SubDivision = m_rows;
+        const SKsize Max         = 256;
+        const SKsize PerCol      = m_charsPerRow;
+        const SKsize MaxY        = (PerCol * SubDivision) + SubDivision;
+
+        const SKsize NumCol = Max / SubDivision;
+
+        double codes[4] = {
+            PerCol * 0.2,
+            PerCol * 0.4,
+            PerCol * 0.6,
+            PerCol * 0.8,
+        };
+
+        r = 0;
+        SKsize y, x, s = 0;
+
+        for (y = 0; y < MaxY; ++y)
+        {
+            skDebugger::writeColor(CS_WHITE, CS_BLACK);
+
+            if (y > 0 && y % PerCol == 0)
+            {
+                printf("   +");
+                for (x = 0; x < NumCol; ++x)
+                {
+                    printf("-");
+                }
+
+                ++r;
+
+                if (r >= m_rows)
+                    break;
+                s = 0;
+            }
+            else
+            {
+                SKsize bufferOffs = r * NumCol;
+                if (s == 0)
+                {
+                    skDebugger::writeColor(CS_LIGHT_GREY);
+                    printf("\n    Bits: [%i-%i]\n", (int)bufferOffs, (int)(bufferOffs + NumCol));
+                }
+
+                skDebugger::writeColor(CS_GREY);
+                if (s % 3 == 0)
+                    printf("%3i ", (int)s);
+                else
+                    printf("    ");
+
+                char   cc;
+                double step = PerCol - (s++ % PerCol);
+                if (step < codes[0])
+                    cc = '@';
+                else if (step < codes[1])
+                    cc = '+';
+                else if (step < codes[2])
+                    cc = '^';
+                else if (step < codes[3])
+                    cc = ':';
+                else
+                    cc = '.';
+                double yoffs = (PerCol * (r + 1)) - (y + 1);
+
+                for (x = 0; x < NumCol; ++x)
+                {
+                    i = x + bufferOffs;
+                    if (i >= 256)
+                        break;
+
+                    double val = (double)m_freqBuffer[i];
+                    val /= (double)max;
+                    val *= PerCol;
+
+                    if (val > yoffs)
+                    {
+                        skDebugger::writeColor(CS_YELLOW);
+                        printf("%c", cc);
+                    }
+                    else
+                    {
+                        skDebugger::writeColor(CS_WHITE);
+                        printf(" ");
+                    }
+                }
+                skDebugger::writeColor(CS_WHITE);
+                printf("\n");
+            }
+        }
+        printf("\n");
+    }
+    void printCSV()
+    {
+        for (SKsize i = 0; i < 256; ++i)
         {
             const int v = (int)m_freqBuffer[i];
             if (v != 0 || m_includeZero)
                 printf("%d,%i,\n", (int)i, v);
         }
-        return 0;
     }
 };
 

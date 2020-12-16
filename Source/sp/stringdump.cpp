@@ -26,7 +26,6 @@
 using namespace skHexPrint;
 using namespace skCommandLine;
 
-
 enum SwitchIds
 {
     SP_LOWER = 0,
@@ -159,7 +158,7 @@ public:
         m_digit = psr.isPresent(SP_DIGITS);
 
         if (!m_logAddress && psr.isPresent(SP_MERGE))
-            m_merge         = psr.getValueInt(SP_MERGE, 0, 0);
+            m_merge = psr.getValueInt(SP_MERGE, 0, 0);
 
         if (psr.isPresent(SP_LENGTH))
             m_number = psr.getValueInt(SP_LENGTH, 0, 0);
@@ -225,9 +224,7 @@ public:
         if (m_addressRange[0] != SK_NPOS32)
             m_stream.seek(a, SEEK_SET);
         else
-        {
             r = n;
-        }
 
         SKuint64 address = 0;
 
@@ -285,7 +282,6 @@ public:
 
             tr += br;
         }
-
         return 0;
     }
 };
