@@ -57,7 +57,13 @@ const Switch Switches[HP_MAX] = {
         HP_FLAGS,
         'f',
         "flags",
-        "Specify the print flags. 1|2|4|8|16",
+        "Specify the print flags. 01|02|04|08|10\n"
+        "  - Where the value is a bit flag of one or more of the following hex values.\n"
+        "    - COLORIZE:           01\n"
+        "    - SHOW_HEX:           02\n"
+        "    - SHOW_ASCII:         04\n"
+        "    - SHOW_ADDRESS:       08\n"
+        "    - SHOW_FULL_ADDRRESS: 10",
         true,
         1,
     },
@@ -65,7 +71,10 @@ const Switch Switches[HP_MAX] = {
         HP_RANGE,
         'r',
         "range",
-        "Specify a start address and a range.",
+        "Specify a start address and a range.\n"
+        "Arguments: [address, range]\n"
+        "  - address Base 16 [0 - file length]\n"
+        "  - range   Base 10 [0 - file length]\n",
         true,
         2,
     },

@@ -43,7 +43,9 @@ const Switch Switches[FP_MAX] = {
         'r',
         "range",
         "Specify a start address and a range.\n"
-        "The input is in base 16.",
+        "Arguments: [address, range]\n"
+        "      - address Base 16 [0 - file length]\n"
+        "      - range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -51,7 +53,7 @@ const Switch Switches[FP_MAX] = {
         FP_NO_DROP_ZERO,
         0,
         "no-drop",
-        "Do not drop values with zero occurrences.",
+        "Do not drop zero values.",
         true,
         0,
     },

@@ -92,7 +92,10 @@ const Switch Switches[SP_MAX] = {
         SP_RANGE,
         'r',
         "range",
-        "Specify a start address and a range.",
+        "Specify a start address and a range.\n"
+        "Arguments: [address, range]\n"
+        "      - address Base 16 [0 - file length]\n"
+        "      - range   Base 10 [0 - file length]\n",
         true,
         2,
     },
@@ -261,7 +264,7 @@ public:
 
                                 printf("%s", tmpStr.c_str());
                                 if (m_merge == SK_NPOS32)
-                                    printf("\n");
+                                    putchar('\n');
                             }
                         }
                         else
@@ -272,7 +275,7 @@ public:
                             printf("%s", tmpStr.c_str());
 
                             if (m_merge == SK_NPOS32)
-                                printf("\n");
+                                putchar('\n');
                         }
 
                         tmpStr.resize(0);
@@ -282,6 +285,7 @@ public:
 
             tr += br;
         }
+        putchar('\n');
         return 0;
     }
 };
