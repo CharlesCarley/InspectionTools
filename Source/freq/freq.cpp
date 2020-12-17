@@ -86,8 +86,8 @@ private:
     bool         m_includeZero;
     SKuint64     m_freqBuffer[256];
     SKuint64     m_max;
-    SKsize       m_width;
-    SKsize       m_height;
+    SKint32      m_width;
+    SKint32      m_height;
     bool         m_csv;
     bool         m_color;
 
@@ -131,8 +131,8 @@ public:
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-            m_width  = skClamp<SKsize>(m_width, 1, 128);
-            m_height = skClamp<SKsize>(m_height, 10, 256);
+            m_width  = skClamp(m_width, 1, 128);
+            m_height = skClamp(m_height, 10, 256);
         }
 
         m_color       = !psr.isPresent(FP_NO_COLOR);
@@ -210,10 +210,9 @@ public:
             m_height * 0.8,
         };
 
-        SKsize y = 0, x = 0, i = 0, j = 0;
-        bool   done = false;
-
-        SKsize maxLeft = countPlaces(m_max) + 2;
+        bool    done = false;
+        SKint32 y = 0, x = 0, i = 0, j = 0;
+        SKint32 maxLeft = countPlaces(m_max) + 3;
 
         while (i < 256)
         {
@@ -225,9 +224,8 @@ public:
                     if (j > 255)
                         j -= (j - 255);
 
-                    printf("\tBytes [%02X - %02X]\n", (int)i, (int)j);
-
-                    for (j = 0; j < maxLeft + 1; ++j)
+                    printf("\tBytes [%02X - %02X]\n", i, j);
+                    for (j = 0; j < maxLeft; ++j)
                         putchar(' ');
                     putchar('+');
                     for (x = 0; x < m_width; ++x)
@@ -235,19 +233,21 @@ public:
                     putchar('\n');
                 }
 
-                const SKsize ypos = (m_height - y);
+                const SKint32 ypos = (m_height - y);
+
                 if (ypos % 4 == 0)
                 {
-                    double d = (double)m_max / (double)(y + 1);
+                    double d = (double)m_max / ((double)y + 1);
 
-                    printf("%.02f", d);
-                    SKsize k = maxLeft - countPlaces((SKsize)d);
-                    for (j = 0; j < k - 2; ++j)
+                    SKint32 cw = printf("%0.2f", d);
+                    SKint32 k  = (int)maxLeft - cw;
+
+                    for (j = 0; j < k; ++j)
                         putchar(' ');
                 }
                 else
                 {
-                    for (j = 0; j < maxLeft + 1; ++j)
+                    for (j = 0; j < maxLeft; ++j)
                         putchar(' ');
                 }
                 putchar('|');
@@ -294,21 +294,21 @@ public:
                     skDebugger::writeColor(CS_WHITE);
                 putchar('\n');
             }
-            for (j = 0; j < maxLeft + 1; ++j)
+            for (j = 0; j < maxLeft; ++j)
                 putchar(' ');
             putchar('+');
             for (x = 0; x < m_width; ++x)
                 putchar('-');
             putchar('\n');
 
-            for (j = 0; j < maxLeft + 2; ++j)
+            for (j = 0; j < maxLeft; ++j)
                 putchar(' ');
 
             j = i;
             for (x = 0; x < m_width && j < 256; ++x, ++j)
             {
                 if (x % 4 == 0)
-                    printf("%02X  ", (int)j);
+                    printf(" %02X ", j);
             }
             putchar('\n');
             putchar('\n');
@@ -317,9 +317,9 @@ public:
         putchar('\n');
     }
 
-    SKsize countPlaces(SKsize n)
+    SKint32 countPlaces(SKint32 n)
     {
-        SKsize i = 0;
+        SKint32 i = 0;
         while (n > 0)
         {
             ++i;
@@ -330,11 +330,11 @@ public:
 
     void printCSV()
     {
-        for (SKsize i = 0; i < 256; ++i)
+        for (SKint32 i = 0; i < 256; ++i)
         {
             const int v = (int)m_freqBuffer[i];
             if (v != 0 || m_includeZero)
-                printf("%d,%i,\n", (int)i, v);
+                printf("%d, %d,\n", i, v);
         }
     }
 };
