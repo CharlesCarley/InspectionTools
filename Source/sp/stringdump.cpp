@@ -28,7 +28,7 @@ using namespace skCommandLine;
 
 enum SwitchIds
 {
-    SP_SHOW_ADDRESS=0,
+    SP_SHOW_ADDRESS = 0,
     SP_NO_WHITE_SPACE,
     SP_LOWER,
     SP_UPPER,
@@ -179,7 +179,7 @@ public:
         m_upperCase     = psr.isPresent(SP_UPPER);
         m_hex           = psr.isPresent(SP_HEX);
         m_base64        = psr.isPresent(SP_BASE64);
-        m_noWhiteSpace  = psr.isPresent(SP_NO_WHITE_SPACE); 
+        m_noWhiteSpace  = psr.isPresent(SP_NO_WHITE_SPACE);
 
         if (!m_logAddress && psr.isPresent(SP_MERGE))
             m_merge = psr.getValueInt(SP_MERGE, 0, 0);
@@ -279,44 +279,52 @@ public:
                         tmpStr.append(ch);
                         if (m_merge != SK_NPOS32 && m_merge > 0)
                         {
-                            if (m++ % m_merge == 0)
+                            if (m++ % m_merge == (m_merge - 1))
                                 tmpStr.append('\n');
                         }
                     }
                     else if (!tmpStr.empty())
                     {
-                        if (m_number != SK_NPOS32)
-                        {
-                            if (tmpStr.size() >= m_number)
-                            {
-                                if (m_logAddress)
-                                    printf("%08X  ", (SKuint32)address);
-
-                                printf("%s", tmpStr.c_str());
-                                if (m_merge == SK_NPOS32)
-                                    putchar('\n');
-                            }
-                        }
-                        else
-                        {
-                            if (m_logAddress)
-                                printf("%08X  ", (SKuint32)address);
-
-                            printf("%s", tmpStr.c_str());
-
-                            if (m_merge == SK_NPOS32)
-                                putchar('\n');
-                        }
-
-                        tmpStr.resize(0);
+                        printBuffer(tmpStr, address);
                     }
                 }
             }
-
             tr += br;
         }
+
+        if (!tmpStr.empty())
+            printBuffer(tmpStr, address);
+
         putchar('\n');
         return 0;
+    }
+
+    void printBuffer(skString &tmpStr, SKuint64 address)
+    {
+        if (m_number != SK_NPOS32)
+        {
+            if (tmpStr.size() >= m_number)
+            {
+                if (m_logAddress)
+                    printf("%08X  ", (SKuint32)address);
+
+                printf("%s", tmpStr.c_str());
+                if (m_merge == SK_NPOS32)
+                    putchar('\n');
+            }
+        }
+        else
+        {
+            if (m_logAddress)
+                printf("%08X  ", (SKuint32)address);
+
+            printf("%s", tmpStr.c_str());
+
+            if (m_merge == SK_NPOS32)
+                putchar('\n');
+        }
+
+        tmpStr.resize(0);
     }
 };
 

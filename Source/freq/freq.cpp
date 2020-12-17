@@ -317,7 +317,7 @@ public:
         putchar('\n');
     }
 
-    SKint32 countPlaces(SKint32 n)
+    SKint32 countPlaces(SKint64 n)
     {
         SKint32 i = 0;
         while (n > 0)

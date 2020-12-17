@@ -24,7 +24,8 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 
 
-set(InspectionTools_INSTALL_PATH CACHE STRING "")
+set(InspectionTools_INSTALL_PATH  CACHE STRING "")
+set(InspectionTools_COPY_ON_BUILD CACHE BOOL OFF)
 
 set(Utils_INCLUDE ${InspectionTools_SOURCE_DIR}/Extern)
 set(Math_INCLUDE  ${InspectionTools_SOURCE_DIR}/Extern)
