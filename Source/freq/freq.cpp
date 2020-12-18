@@ -37,6 +37,9 @@ enum SwitchIds
     FP_RANGE = 0,
     FP_NO_DROP_ZERO,
     FP_NO_COLOR,
+#ifdef USING_SDL
+    FP_GRAPH,
+#endif
     FP_TEXT_GRAPH,
     FP_MAX
 };
@@ -71,17 +74,17 @@ const Switch Switches[FP_MAX] = {
     },
 #ifdef USING_SDL
     {
-        FP_TEXT_GRAPH,
-        'g',
-        "graph",
-        "Display a text based bar graph.\n"
+        FP_GRAPH,
+        'w',
+        "window",
+        "Graph items in a window.\n"
         "  - Arguments: [width, height]\n"
-        "    - Width  [640 - 1024]\n"
-        "    - Height [480 - 768]\n",
+        "    - Width  [640 - 7680]\n"
+        "    - Height [480 - 4320]\n",
         true,
         2,
     },
-#else
+#endif
     {
         FP_TEXT_GRAPH,
         'g',
@@ -93,7 +96,6 @@ const Switch Switches[FP_MAX] = {
         true,
         2,
     },
-#endif  // USING_SDL
 };
 
 class Application
@@ -107,6 +109,7 @@ private:
     SKint32      m_width;
     SKint32      m_height;
     bool         m_csv;
+    bool         m_window;
     bool         m_color;
 
 public:
@@ -118,6 +121,7 @@ public:
         m_width(64),
         m_height(16),
         m_csv(true),
+        m_window(false),
         m_color(true)
     {
         m_addressRange[0] = SK_NPOS32;
@@ -142,19 +146,27 @@ public:
             m_addressRange[1] = psr.getValueInt(FP_RANGE, 1, SK_NPOS32, 10);
         }
 
+#ifdef USING_SDL
+        if (psr.isPresent(FP_GRAPH))
+        {
+            m_window = true;
+            m_csv    = false;
+            m_width  = psr.getValueInt(FP_GRAPH, 0, 640);
+            m_height = psr.getValueInt(FP_GRAPH, 1, 480);
+
+            m_width  = skClamp(m_width, 640, 7680);
+            m_height = skClamp(m_height, 480, 4320);
+        }
+#endif
         if (psr.isPresent(FP_TEXT_GRAPH))
         {
+            m_window = false;
             m_csv    = false;
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-#ifdef USING_SDL
-            m_width  = skClamp(m_width, 640, 7680);
-            m_height = skClamp(m_height, 480, 4320);
-#else
             m_width  = skClamp(m_width, 1, 128);
             m_height = skClamp(m_height, 10, 256);
-#endif  // USING_SDL
         }
 
         m_color       = !psr.isPresent(FP_NO_COLOR);
@@ -220,9 +232,16 @@ public:
         else
         {
 #if defined(USING_SDL)
-            FreqApplication app;
-            app.setBuffer(m_freqBuffer, m_max);
-            app.main(m_width, m_height);
+            if (m_window)
+            {
+                FreqApplication app;
+                app.setBuffer(m_freqBuffer, m_max);
+                app.main(m_width, m_height);
+            }
+            else
+            {
+                printGraph();
+            }
 #else
             printGraph();
 #endif
@@ -230,7 +249,6 @@ public:
         return 0;
     }
 
-#if !defined(USING_SDL)
     void printGraph()
     {
         double codes[4] = {
@@ -357,7 +375,7 @@ public:
         }
         return i;
     }
-#endif
+
     void printCSV()
     {
         for (SKint32 i = 0; i < 256; ++i)
