@@ -149,8 +149,8 @@ public:
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
 #ifdef USING_SDL
-            m_width  = skClamp(m_width, 640, 1024);
-            m_height = skClamp(m_height, 480, 768);
+            m_width  = skClamp(m_width, 640, 7680);
+            m_height = skClamp(m_height, 480, 4320);
 #else
             m_width  = skClamp(m_width, 1, 128);
             m_height = skClamp(m_height, 10, 256);
