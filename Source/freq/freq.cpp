@@ -24,7 +24,10 @@
 #include "Utils/skMemoryUtils.h"
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
+
+#ifdef USING_SDL
 #include "freqApp.h"
+#endif  // USING_SDL
 
 using namespace skHexPrint;
 using namespace skCommandLine;
@@ -66,6 +69,19 @@ const Switch Switches[FP_MAX] = {
         true,
         0,
     },
+#ifdef USING_SDL
+    {
+        FP_TEXT_GRAPH,
+        'g',
+        "graph",
+        "Display a text based bar graph.\n"
+        "  - Arguments: [width, height]\n"
+        "    - Width  [640 - 1024]\n"
+        "    - Height [480 - 768]\n",
+        true,
+        2,
+    },
+#else
     {
         FP_TEXT_GRAPH,
         'g',
@@ -77,6 +93,7 @@ const Switch Switches[FP_MAX] = {
         true,
         2,
     },
+#endif  // USING_SDL
 };
 
 class Application
@@ -127,12 +144,17 @@ public:
 
         if (psr.isPresent(FP_TEXT_GRAPH))
         {
-            m_csv = false;
+            m_csv    = false;
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-            //m_width  = skClamp(m_width, 1, 128);
-            //m_height = skClamp(m_height, 10, 256);
+#ifdef USING_SDL
+            m_width  = skClamp(m_width, 640, 1024);
+            m_height = skClamp(m_height, 480, 768);
+#else
+            m_width  = skClamp(m_width, 1, 128);
+            m_height = skClamp(m_height, 10, 256);
+#endif  // USING_SDL
         }
 
         m_color       = !psr.isPresent(FP_NO_COLOR);
@@ -197,14 +219,19 @@ public:
             printCSV();
         else
         {
+#if defined(USING_SDL)
             FreqApplication app;
             app.setBuffer(m_freqBuffer, m_max);
             app.main(m_width, m_height);
-            // printGraph();
+#else
+            printGraph();
+#endif
         }
         return 0;
     }
 
+
+#if !defined(USING_SDL)
     void printGraph()
     {
         double codes[4] = {
@@ -331,7 +358,7 @@ public:
         }
         return i;
     }
-
+#endif
     void printCSV()
     {
         for (SKint32 i = 0; i < 256; ++i)

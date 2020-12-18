@@ -1,19 +1,29 @@
 set(TargetName freq)
 
-set(TargetSRC 
-    freq.cpp
-    freqApp.cpp
-    freqApp.h
-)
-
-add_executable(${TargetName} ${TargetSRC})
+set(Target_SRC  freq.cpp)
 
 if (InspectionTools_BUILD_SDL)
-    include_directories(${Utils_INCLUDE} ${Math_INCLUDE} ${SDL_INCLUDE})
-    target_link_libraries(${TargetName} Utils Math ${SDL_LIBS})
+    set(Target_SRC_EX
+        freqApp.cpp
+        freqApp.h
+    )
+    set(Target_INC ${Utils_INCLUDE} 
+                   ${Math_INCLUDE} 
+                   ${SDL_INCLUDE})
+    set(Target_LNK  Utils 
+                    Math 
+                    ${SDL_LIBS})
+    add_definitions(-DUSING_SDL)
 else()
-    include_directories(${Utils_INCLUDE})
-    target_link_libraries(${TargetName} Utils)
+    set(Target_INC ${Utils_INCLUDE})
+    set(Target_LNK  Utils)
 endif()
+
+add_executable(${TargetName} 
+               ${Target_SRC}
+               ${Target_SRC_EX})
+
+include_directories(${Target_INC})
+target_link_libraries(${TargetName} ${Target_LNK})
 
 copy_install_target(${TargetName})
