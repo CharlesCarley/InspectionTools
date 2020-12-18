@@ -230,7 +230,6 @@ public:
         return 0;
     }
 
-
 #if !defined(USING_SDL)
     void printGraph()
     {
