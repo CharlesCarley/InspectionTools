@@ -24,6 +24,7 @@
 #include "Utils/skMemoryUtils.h"
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
+#include "freqApp.h"
 
 using namespace skHexPrint;
 using namespace skCommandLine;
@@ -131,8 +132,8 @@ public:
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
-            m_width  = skClamp(m_width, 1, 128);
-            m_height = skClamp(m_height, 10, 256);
+            //m_width  = skClamp(m_width, 1, 128);
+            //m_height = skClamp(m_height, 10, 256);
         }
 
         m_color       = !psr.isPresent(FP_NO_COLOR);
@@ -196,7 +197,12 @@ public:
         if (m_csv)
             printCSV();
         else
-            printGraph();
+        {
+            FreqApplication app;
+            app.setBuffer(m_freqBuffer, m_max);
+            app.main(m_width, m_height);
+            // printGraph();
+        }
 
         return 0;
     }
