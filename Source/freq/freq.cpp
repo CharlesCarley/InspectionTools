@@ -128,7 +128,6 @@ public:
         if (psr.isPresent(FP_TEXT_GRAPH))
         {
             m_csv = false;
-
             m_width  = psr.getValueInt(FP_TEXT_GRAPH, 0, 64);
             m_height = psr.getValueInt(FP_TEXT_GRAPH, 1, 16);
 
@@ -203,7 +202,6 @@ public:
             app.main(m_width, m_height);
             // printGraph();
         }
-
         return 0;
     }
 

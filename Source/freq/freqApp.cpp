@@ -28,6 +28,7 @@
 // colors
 const skColor Background = skColor(0x333333FF);
 const skColor Border     = skColor(0x101010FF);
+const skColor LineColor  = skColor(0x4885AFFF);
 
 class PrivateApp
 {
@@ -73,17 +74,13 @@ public:
         skScalar x1, y1, x2, y2;
         rect.getBounds(x1, y1, x2, y2);
 
-        SDL_FPoint points[8] = {
+        const SDL_FPoint points[8] = {
             {x1, y1},
             {x2, y1},
-            //
             {x2, y1},
             {x2, y2},
-
-            //
             {x2, y2},
             {x1, y2},
-            //
             {x1, y2},
             {x1, y1},
         };
@@ -112,20 +109,20 @@ public:
 
         bool quit = false;
 
-        skRectangle rect(0, 0, w, h);
+        skRectangle rect(0, 0, skScalar(w), skScalar(h));
         skRectangle displayRect(rect);
 
         displayRect.contract(20, 40);
 
+        const skScalar moh   = (skScalar(m_parent->m_max) / displayRect.height);
         const skScalar unitX = displayRect.width / skScalar(256.0);
-        const skScalar unitY = 1.f / (skScalar(m_parent->m_max) / displayRect.height);
+        const skScalar unitY = skScalar(1.0) / (moh > 0 ? moh : skScalar(2.0));
 
         bool pointsInit = false;
 
         while (!quit)
         {
             SDL_Event evt;
-
             while (SDL_PollEvent(&evt))
             {
                 switch (evt.type)
@@ -147,10 +144,7 @@ public:
             skScalar step     = displayRect.x + unitX;
             skScalar baseLine = displayRect.getBottom();
 
-            skVector2 f(displayRect.x, baseLine), t;
-
-            bool isSet = false;
-
+            skVector2 f, t;
             for (SKsize i = 0; i < 256; i++, step += unitX)
             {
                 if (i == 0)
@@ -163,11 +157,12 @@ public:
                     t.x = step;
                     t.y = baseLine - skScalar(m_parent->m_freqBuffer[i]) * unitY;
 
-                    setColor(skColor(0x4885AFFF));
+                    setColor(LineColor);
                     SDL_RenderDrawLineF(m_renderer, f.x, f.y, t.x, t.y);
                     f = t;
                 }
             }
+
             SDL_RenderPresent(m_renderer);
         }
     }
@@ -176,6 +171,5 @@ public:
 void FreqApplication::main(SKint32 w, SKint32 h)
 {
     PrivateApp app(this);
-
     app.run(w, h);
 }
