@@ -79,8 +79,8 @@ const Switch Switches[FP_MAX] = {
         "window",
         "Graph items in a window.\n"
         "  - Arguments: [width, height]\n"
-        "    - Width  [640 - 7680]\n"
-        "    - Height [480 - 4320]\n",
+        "    - Width  [200 - 7680]\n"
+        "    - Height [100 - 4320]\n",
         true,
         2,
     },
@@ -154,8 +154,8 @@ public:
             m_width  = psr.getValueInt(FP_GRAPH, 0, 640);
             m_height = psr.getValueInt(FP_GRAPH, 1, 480);
 
-            m_width  = skClamp(m_width, 640, 7680);
-            m_height = skClamp(m_height, 480, 4320);
+            m_width  = skClamp(m_width, 200, 7680);
+            m_height = skClamp(m_height, 100, 4320);
         }
 #endif
         if (psr.isPresent(FP_TEXT_GRAPH))

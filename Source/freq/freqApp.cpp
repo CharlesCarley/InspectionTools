@@ -23,13 +23,15 @@
 #include "Math/skRectangle.h"
 #include "Math/skVector2.h"
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
+#include "SDL.h"
 
 // colors
-const skColor Background       = skColor(0x333333FF);
-const skColor BackgroundGraph  = skColor(0x2F2F2FFF);
-const skColor BackgroundGraph2 = skColor(0x252525FF);
-const skColor LineColor        = skColor(0x4885AFFF);
+const skColor Clear            = skColor(0x444444FF);
+const skColor Background       = skColor(0x181818FF);
+const skColor BackgroundGraph  = skColor(0x222222FF);
+const skColor BackgroundGraph2 = skColor(0x333333FF);
+const skColor BackgroundGraph3 = skColor(0x333333FF);
+const skColor LineColor        = skColor(0x5EC4F6FF);
 
 class PrivateApp
 {
@@ -78,6 +80,7 @@ public:
 
         if (m_window)
             SDL_DestroyWindow(m_window);
+
         SDL_Quit();
     }
 
@@ -148,7 +151,6 @@ public:
     {
         setColor(LineColor);
 
-
         skVector2       fr(f.x, -f.y), to(t.x, -t.y);
         const skVector2 offs(m_origin + m_pan);
 
@@ -161,11 +163,14 @@ public:
         fr += offs;
         to += offs;
 
-        SDL_RenderDrawLineF(m_renderer,
-                            fr.x,
-                            fr.y,
-                            to.x,
-                            to.y);
+        if (m_displayRect.contains(fr) || m_displayRect.contains(to))
+        {
+            SDL_RenderDrawLineF(m_renderer,
+                                fr.x,
+                                fr.y,
+                                to.x,
+                                to.y);
+        }
     }
 
     void fillGrid(const skScalar& xMin,
@@ -187,33 +192,40 @@ public:
         const skScalar xOffset = m_origin.x + m_pan.x;
         const skScalar yOffset = m_origin.y + m_pan.y;
 
-        stp = skFmod(xMin + xOffset, sxt);
+        stp = xMin + skFmod(xMin + xOffset, sxt);
         while (stp < xMax)
         {
-            SDL_RenderDrawLineF(m_renderer, stp, yMin, stp, yMax);
+            if (m_displayRect.containsX(stp))
+                SDL_RenderDrawLineF(m_renderer, stp, yMin, stp, yMax);
             stp += sxt;
         }
 
-        stp = skFmod(yMin + yOffset, syt);
+        stp = yMin + skFmod(yMin + yOffset, syt);
         while (stp < yMax)
         {
-            SDL_RenderDrawLineF(m_renderer, xMin, stp, xMax, stp);
+            if (m_displayRect.containsY(stp))
+                SDL_RenderDrawLineF(m_renderer, xMin, stp, xMax, stp);
             stp += syt;
         }
 
-        setColor(BackgroundGraph2);
-        SDL_RenderDrawLineF(m_renderer,
-                            xOffset,
-                            yMin,
-                            xOffset,
-                            yMax);
-
-        setColor(BackgroundGraph2);
-        SDL_RenderDrawLineF(m_renderer,
-                            xMin,
-                            yOffset,
-                            xMax,
-                            yOffset);
+        if (m_displayRect.containsX(xOffset))
+        {
+            setColor(BackgroundGraph2);
+            SDL_RenderDrawLineF(m_renderer,
+                                xOffset,
+                                yMin,
+                                xOffset,
+                                yMax);
+        }
+        if (m_displayRect.containsY(yOffset))
+        {
+            setColor(BackgroundGraph2);
+            SDL_RenderDrawLineF(m_renderer,
+                                xMin,
+                                yOffset,
+                                xMax,
+                                yOffset);
+        }
     }
 
     void processEvents()
@@ -274,11 +286,14 @@ public:
 
     void render()
     {
-        clear(Background);
+        clear(Clear);
 
         skRectangle scaledRect(m_displayRect);
         scaledRect.move(m_pan.x, m_pan.y);
         scaledRect.expand(m_scale, m_scale);
+
+        setColor(Background);
+        fillRect(m_displayRect);
 
         m_zoom = scaledRect.width / m_displayRect.width;
 
@@ -313,12 +328,13 @@ public:
             }
             x += m_xAxisScale;
         }
-
         SDL_RenderPresent(m_renderer);
     }
 
     void run(const SKint32 w, const SKint32 h)
     {
+        SDL_Init(SDL_INIT_VIDEO);
+
         m_window = SDL_CreateWindow("Frequency Viewer",
                                     SDL_WINDOWPOS_CENTERED,
                                     SDL_WINDOWPOS_CENTERED,
@@ -339,15 +355,10 @@ public:
         m_displayRect.width  = skScalar(w);
         m_displayRect.height = skScalar(h);
 
-        const skScalar maxOverHeight = skScalar(m_parent->m_max) / m_displayRect.height;
-        if (maxOverHeight > 0)
-            m_yAxisScale = skScalar(1.0) / maxOverHeight;
-        else
-            m_yAxisScale = skScalar(0.02);
-
+        m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
         m_xAxisScale = m_displayRect.width / skScalar(256.0);
         m_showGrid   = true;
-        m_origin.x   = 0;
+        m_origin.x   = m_displayRect.getLeft();
         m_origin.y   = m_displayRect.getBottom();
 
         while (!m_quit)
