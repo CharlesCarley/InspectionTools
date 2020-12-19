@@ -147,6 +147,8 @@ public:
     void displayLine(const skVector2& f, const skVector2& t) const
     {
         setColor(LineColor);
+
+
         skVector2       fr(f.x, -f.y), to(t.x, -t.y);
         const skVector2 offs(m_origin + m_pan);
 
@@ -279,8 +281,6 @@ public:
         scaledRect.expand(m_scale, m_scale);
 
         m_zoom = scaledRect.width / m_displayRect.width;
-        if (m_zoom < skScalar(0.5))
-            m_zoom = skScalar(0.5);
 
         if (m_showGrid)
         {

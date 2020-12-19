@@ -258,9 +258,8 @@ public:
             m_height * 0.8,
         };
 
-        bool    done = false;
-        SKint32 y = 0, x = 0, i = 0, j = 0;
-        SKint32 maxLeft = countPlaces(m_max) + 3;
+        SKint32       y, x, j, i = 0;
+        const SKint32 maxLeft = countPlaces(m_max) + 3;
 
         while (i < 256)
         {
@@ -281,9 +280,9 @@ public:
                     putchar('\n');
                 }
 
-                const SKint32 ypos = (m_height - y);
+                const SKint32 yPos = (m_height - y);
 
-                if (ypos % 4 == 0)
+                if (yPos % 4 == 0)
                 {
                     double d = (double)m_max / ((double)y + 1);
 
@@ -307,16 +306,16 @@ public:
                     val /= (double)m_max;
                     val *= (double)m_height;
 
-                    if (val > ypos)
+                    if (val > yPos)
                     {
                         char cc;
-                        if (ypos < codes[0])
+                        if (yPos < codes[0])
                             cc = '@';
-                        else if (ypos < codes[1])
+                        else if (yPos < codes[1])
                             cc = '+';
-                        else if (ypos < codes[2])
+                        else if (yPos < codes[2])
                             cc = '^';
-                        else if (ypos < codes[3])
+                        else if (yPos < codes[3])
                             cc = ':';
                         else
                             cc = '.';
@@ -324,9 +323,9 @@ public:
                         if (m_color)
                         {
                             if (cc == '@')
-                                skDebugger::writeColor(skConsoleColorSpace::CS_DARKYELLOW);
+                                skDebugger::writeColor(CS_DARKYELLOW);
                             else
-                                skDebugger::writeColor(skConsoleColorSpace::CS_YELLOW);
+                                skDebugger::writeColor(CS_YELLOW);
                         }
                         putchar(cc);
                     }
