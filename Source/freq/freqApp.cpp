@@ -22,6 +22,7 @@
 #include "Math/skColor.h"
 #include "Math/skRectangle.h"
 #include "Math/skVector2.h"
+#include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
 
@@ -39,6 +40,7 @@ private:
     SDL_Window*      m_window;
     SDL_Renderer*    m_renderer;
     SDL_Surface*     m_surface;
+    Font*            m_font;
     FreqApplication* m_parent;
     bool             m_quit;
     bool             m_redraw;
@@ -57,6 +59,7 @@ public:
         m_window(nullptr),
         m_renderer(nullptr),
         m_surface(nullptr),
+        m_font(nullptr),
         m_parent(parent),
         m_quit(false),
         m_redraw(true),
@@ -72,6 +75,8 @@ public:
 
     ~PrivateApp()
     {
+        delete m_font;
+
         if (m_surface)
             SDL_FreeSurface(m_surface);
 
@@ -328,6 +333,7 @@ public:
             }
             x += m_xAxisScale;
         }
+
         SDL_RenderPresent(m_renderer);
     }
 
@@ -354,6 +360,9 @@ public:
 
         m_displayRect.width  = skScalar(w);
         m_displayRect.height = skScalar(h);
+
+        m_font = new Font();
+        m_font->loadInternal(m_renderer, 48, 72);
 
         m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
         m_xAxisScale = m_displayRect.width / skScalar(256.0);

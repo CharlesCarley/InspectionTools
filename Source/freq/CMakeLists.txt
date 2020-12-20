@@ -6,6 +6,8 @@ if (InspectionTools_BUILD_SDL)
     set(Target_SRC_EX
         freqApp.cpp
         freqApp.h
+        freqFont.cpp
+        freqFont.h
     )
     set(Target_INC ${Utils_INCLUDE} 
                    ${Math_INCLUDE} 

@@ -7,3 +7,6 @@
 [submodule "Extern/Math"]
 	path = Extern/Math
 	url = https://github.com/CharlesCarley/Math.git
+[submodule "Extern/Freetype"]
+	path = Extern/Freetype
+	url = https://github.com/CharlesCarley/FreeType.git

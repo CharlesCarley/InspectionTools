@@ -34,11 +34,8 @@ set(InspectionTools_BUILD_SDL       ${BUILD_SDL})
 
 set(Utils_INCLUDE ${InspectionTools_SOURCE_DIR}/Extern)
 set(Math_INCLUDE  ${InspectionTools_SOURCE_DIR}/Extern)
-set(SDL_INCLUDE   ${InspectionTools_SOURCE_DIR}/Extern/SDL)
-set(SDL_LIBS      SDL2-static)
-
-
-
+set(SDL_INCLUDE   ${InspectionTools_SOURCE_DIR}/Extern/SDL ${InspectionTools_SOURCE_DIR}/Extern/FreeType/Source/include)
+set(SDL_LIBS      SDL2-static FreeType)
 
 # -----------------------------------------------------------------------------
 #                            Show config

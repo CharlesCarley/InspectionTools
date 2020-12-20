@@ -17,33 +17,55 @@
   3. This notice may not be removed or altered from any source distribution.
 -------------------------------------------------------------------------------
 */
-#ifndef _freqApp_h_
-#define _freqApp_h_
+#ifndef _freqFont_h_
+#define _freqFont_h_
 
+#include "Math/skColor.h"
+#include "Math/skScalar.h"
 #include "Utils/skString.h"
 
-class FreqApplication
+struct SDL_Texture;
+struct SDL_Renderer;
+struct SDL_Rect;
+
+class Font
 {
 private:
-    SKuint64 *m_freqBuffer;
-    SKuint64  m_max;
+    SDL_Texture* m_texture;
+    SDL_Rect*    m_chars;
+    SKint32      m_size;
+    SKint32      m_dpi;
+    SKint32      m_width;
+    SKint32      m_height;
+    SKint32      m_pitch;
+    SKint32      m_xMax;
+    SKint32      m_yMax;
+    skScalar     m_pointScale;
 
-    friend class PrivateApp;
+    void setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color);
+
+    const SDL_Rect& getBoundsFor(char ch);
 
 public:
-    FreqApplication() :
-        m_freqBuffer(nullptr),
-        m_max(0)
-    {
-    }
+    Font();
+    ~Font();
 
-    void setBuffer(SKuint64 *buffer, SKuint64 max)
-    {
-        m_freqBuffer = buffer;
-        m_max        = max;
-    }
+    void loadInternal(SDL_Renderer* renderer,
+                      SKuint32      size,
+                      SKuint32      dpi);
 
-    void main(SKint32 w, SKint32 h);
+    void draw(SDL_Renderer*  renderer,
+              const char*    text,
+              skScalar       x,
+              skScalar       y,
+              const skColor& col,
+              SKsize         len = SK_NPOS);
+
+
+    inline void setPointScale(skScalar scale)
+    {
+        m_pointScale = scale / skScalar(m_size);
+    }
 };
 
-#endif  //_freqApp_h_
+#endif  //_freqFont_h_
