@@ -33,7 +33,7 @@ const skColor BackgroundGraph  = skColor(0x333333FF);
 const skColor BackgroundGraph2 = skColor(0x444444FF);
 const skColor BackgroundGraph3 = skColor(0x444444FF);
 const skColor LineColor        = skColor(0x5EC4F6FF);
-const skColor Background2       = skColor(0x181818FF);
+const skColor Background2      = skColor(0x181818FF);
 const skColor Text             = skColor(0x808080FF);
 
 class PrivateApp
@@ -260,16 +260,17 @@ public:
         const skScalar xFac    = 1.f / (m_xAxisScale / m_zoom);
         const skScalar yFac    = 1.f / (m_yAxisScale / m_zoom);
 
-
         fillRect(skRectangle(0, 0, m_displayOffs.x, yMax));
-        fillRect(skRectangle(m_displayOffs.x, m_displayRect.getBottom() - m_displayOffs.y, xMax, m_displayOffs.y));
-
+        fillRect(skRectangle(m_displayOffs.x,
+                             m_displayRect.getBottom() - m_displayOffs.y,
+                             xMax,
+                             m_displayOffs.y));
 
         m_font->setPointScale(12);
+
         stp = xMin + skFmod(xMin + xOffset, sxt);
         while (stp < xMax)
         {
-
             if (stp > m_displayOffs.x)
             {
                 m_font->draw(m_renderer,
@@ -277,8 +278,6 @@ public:
                              stp - 3,
                              yMax - 16,
                              Text);
-
-            
             }
 
             stp += sxt;
@@ -312,7 +311,7 @@ public:
                 {
                     m_pan      = skVector2::Zero;
                     m_origin.x = m_displayRect.getLeft() + m_displayOffs.x;
-                    m_origin.y = m_displayRect.getBottom() + m_displayOffs.y;
+                    m_origin.y = m_displayRect.getBottom() - m_displayOffs.y;
                     m_scale    = 1;
                     m_redraw   = true;
                 }
@@ -459,7 +458,7 @@ public:
         m_displayRect.height = skScalar(h);
 
         m_font = new Font();
-        m_font->loadInternal(m_renderer, 48, 72);
+        m_font->loadInternal(m_renderer, 32, 72);
 
         m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
         m_xAxisScale = (m_displayRect.width) / skScalar(256.0);

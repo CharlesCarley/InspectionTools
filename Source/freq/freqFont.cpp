@@ -205,11 +205,12 @@ void Font::loadInternal(SDL_Renderer* renderer,
         }
 
         Char& ch = m_chars[i - CharStart];
-        ch.x     = x;
-        ch.y     = y;
-        ch.w     = advance;
-        ch.h     = m_yMax;
-        ch.o     = skMax<SKint32>(0, m_yMax - yBearing);
+
+        ch.x = x;
+        ch.y = y;
+        ch.w = advance;
+        ch.h = m_yMax;
+        ch.o = skMax<SKint32>(0, m_yMax - yBearing);
 
         const SKint32 nx = m_xMax + Spacer;
         x += nx;
