@@ -79,6 +79,7 @@ void Font_calculateLimits(FT_Face        face,
 
         const SKint32 cx = FTINT(slot->metrics.horiBearingX + slot->metrics.width);
         const SKint32 cy = FTINT(slot->metrics.height);
+
         if (yMax < cy)
             yMax = cy;
         if (xMax < cx)
@@ -134,31 +135,21 @@ void Font::loadInternal(SDL_Renderer* renderer,
 {
     FT_Library lib;
     FT_Face    face;
-
     if (FT_Init_FreeType(&lib))
         return;
 
-    m_dpi  = dpi;
-    m_size = size;
-
-    if (FT_New_Memory_Face(lib,
-                           (const FT_Byte*)DejaVu_ttf,
-                           (FT_Long)DejaVu_ttf_size,
-                           0,
-                           &face))
+    if (FT_New_Memory_Face(lib, (const FT_Byte*)DejaVu_ttf, (FT_Long)DejaVu_ttf_size, 0, &face))
         return;
 
-    if (FT_Set_Char_Size(
-            face,
-            FTI64(m_size),
-            FTI64(m_size),
-            dpi,
-            dpi))
+    if (FT_Set_Char_Size(face, FTI64(size), FTI64(size), dpi, dpi))
         return;
 
     SKint32 ix, iy;
     SKint32 x, y;
     SKint32 i;
+
+    m_dpi  = dpi;
+    m_size = size;
 
     Font_calculateLimits(face, Spacer, m_width, m_height, m_xMax, m_yMax);
 
@@ -182,6 +173,7 @@ void Font::loadInternal(SDL_Renderer* renderer,
     {
         if (FT_Load_Char(face, i, FT_LOAD_RENDER))
             continue;
+
         if (!face->glyph)
             continue;
 
@@ -195,8 +187,7 @@ void Font::loadInternal(SDL_Renderer* renderer,
 
         const SKint32 yBearing = FTINT(slot->metrics.horiBearingY);
         const SKint32 xBearing = FTINT(slot->metrics.horiBearingX);
-
-        const SKint32 advance = FTINT(slot->advance.x);
+        const SKint32 advance  = FTINT(slot->advance.x);
 
         for (iy = 0; iy < slot->bitmap.rows && imgBuf; ++iy)
         {
@@ -214,13 +205,11 @@ void Font::loadInternal(SDL_Renderer* renderer,
         }
 
         Char& ch = m_chars[i - CharStart];
-
-        ch.x = x;
-        ch.y = y;
-        ch.w = advance;
-        ch.h = m_yMax;
-        ch.o = skMax<SKint32>(0, m_yMax - yBearing);
-
+        ch.x     = x;
+        ch.y     = y;
+        ch.w     = advance;
+        ch.h     = m_yMax;
+        ch.o     = skMax<SKint32>(0, m_yMax - yBearing);
 
         const SKint32 nx = m_xMax + Spacer;
         x += nx;
@@ -277,7 +266,6 @@ void Font::draw(SDL_Renderer*  renderer,
                 dst.x = (int)x;
                 dst.y = (int)y;
                 dst.y += int(skScalar(cch.o) * m_pointScale);
-
                 dst.w = int(skScalar(cch.w) * m_pointScale);
                 dst.h = int(skScalar(cch.h) * m_pointScale);
 
@@ -305,12 +293,13 @@ void Font::draw(SDL_Renderer*  renderer,
 }
 
 void Font::draw(SDL_Renderer*  renderer,
-                SKint32       val,
+                SKint32        val,
                 skScalar       x,
                 skScalar       y,
                 const skColor& col) const
 {
     char buf[33];
+
     const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
     draw(renderer, buf, x, y, col, len);
 }
