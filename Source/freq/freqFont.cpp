@@ -17,10 +17,11 @@
   3. This notice may not be removed or altered from any source distribution.
 -------------------------------------------------------------------------------
 */
-#include "FreqFont.h"
 #include <ft2build.h>
-#include "Math/skMath.h"
 #include FT_FREETYPE_H
+#include "Math/skColor.h"
+#include "Math/skMath.h"
+#include "freqFont.h"
 
 #define FTINT(x) ((x) >> 6)
 #define FTI64(x) ((x) << 6)
@@ -29,20 +30,20 @@
 #include "DejaVu_ttf.inl"
 #include "SDL.h"
 
-const SKint32  CharStart = 32;
-const SKint32  CharEnd   = 127;
-const SKint32  CharTotal = CharEnd - CharStart;
-const SKint32  spacer    = 6;
-const SDL_Rect NullChar  = {0, 0, 0, 0};
+const SKint32    CharStart = 32;
+const SKint32    CharEnd   = 127;
+const SKint32    CharTotal = CharEnd - CharStart;
+const SKint32    Spacer    = 3;
+const Font::Char NullChar  = {0, 0, 0, 0, 0};
 
 Font::Font() :
     m_texture(nullptr),
     m_chars(nullptr),
     m_size(0),
     m_dpi(0),
-    m_pitch(0),
     m_width(0),
     m_height(0),
+    m_pitch(0),
     m_xMax(0),
     m_yMax(0),
     m_pointScale(1)
@@ -71,12 +72,13 @@ void Font_calculateLimits(FT_Face        face,
     {
         if (FT_Load_Char(face, i, FT_LOAD_RENDER))
             continue;
+
         FT_GlyphSlot slot = face->glyph;
         if (!slot)
             continue;
 
-        SKint32 cx = FTINT(slot->advance.x + slot->metrics.horiBearingX);
-        SKint32 cy = FTINT(slot->metrics.horiBearingY);
+        const SKint32 cx = FTINT(slot->metrics.horiBearingX + slot->metrics.width);
+        const SKint32 cy = FTINT(slot->metrics.height);
         if (yMax < cy)
             yMax = cy;
         if (xMax < cx)
@@ -88,43 +90,40 @@ void Font_calculateLimits(FT_Face        face,
 
     sx = skScalar((xMax + space) * CharTotal);
     sx /= sr;
-    sx += xMax;
+    sx += skScalar(xMax);
 
     sy = skScalar((yMax + space) * CharTotal);
     sy /= sr;
-    sy += yMax;
+    sy += skScalar(yMax);
 
     w = (SKint32)sx;
-
-    w = skMath::pow2(w);
     h = (SKint32)sy;
-    h = skMath::pow2(h);
 }
 
-void Font::setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color)
+void Font::setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color) const
 {
     if (x > m_width || y > m_height || x < 0 || y < 0 || !pixels)
         return;
 
-    SKuint64 o = y * (SKuint64)m_pitch;
+    const SKuint64 o = y * (SKuint64)m_pitch;
     if (o > SK_NPOS32)
         return;
 
-    SKuint64 k = (SKuint64)x * 4;
+    const SKuint64 k = (SKuint64)x * 4;
     if (o > SK_NPOS32)
         return;
-
-    SKuint32* buf = (SKuint32*)((SKuint8*)pixels + o + k);
-
-    *buf++ = color;
+    auto* pix = (SKuint8*)pixels;
+    auto* buf = (SKuint32*)(pix + o + k);
+    *buf      = color;
 }
 
-const SDL_Rect& Font::getBoundsFor(char ch)
+const Font::Char& Font::getBoundsFor(char ch) const
 {
     if (m_chars)
     {
-        if (ch >= CharStart && ch <= CharEnd)
-            return m_chars[(int)ch - CharStart];
+        const auto idx = (SKuint8)ch;
+        if (idx >= CharStart && idx <= CharEnd)
+            return m_chars[idx - CharStart];
     }
     return NullChar;
 }
@@ -153,15 +152,15 @@ void Font::loadInternal(SDL_Renderer* renderer,
             face,
             FTI64(m_size),
             FTI64(m_size),
-            (dpi),
-            (dpi)))
+            dpi,
+            dpi))
         return;
 
     SKint32 ix, iy;
     SKint32 x, y;
     SKint32 i;
 
-    Font_calculateLimits(face, spacer, m_width, m_height, m_xMax, m_yMax);
+    Font_calculateLimits(face, Spacer, m_width, m_height, m_xMax, m_yMax);
 
     m_texture = SDL_CreateTexture(renderer,
                                   SDL_PIXELFORMAT_RGBA8888,
@@ -169,14 +168,14 @@ void Font::loadInternal(SDL_Renderer* renderer,
                                   m_width,
                                   m_height);
 
-    SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_ADD);
-    SDL_SetTextureScaleMode(m_texture, SDL_ScaleModeBest);
+    SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(m_texture, SDL_ScaleModeNearest);
 
     void* pixels;
     SDL_LockTexture(m_texture, nullptr, &pixels, &m_pitch);
 
-    m_chars = new SDL_Rect[CharTotal];
-    memset(m_chars, 0, sizeof(SDL_Rect) * CharTotal);
+    m_chars = new Char[CharTotal];
+    memset(m_chars, 0, sizeof(Char) * CharTotal);
 
     x = y = 0;
     for (i = CharStart; i < CharEnd; ++i)
@@ -186,41 +185,49 @@ void Font::loadInternal(SDL_Renderer* renderer,
         if (!face->glyph)
             continue;
 
-        SKuint8* ibuf = face->glyph->bitmap.buffer;
-        if (!ibuf)
+        SKuint8* imgBuf = face->glyph->bitmap.buffer;
+        if (!imgBuf)
             continue;
 
-        FT_GlyphSlot  slot     = face->glyph;
-        const SKint32 baseline = (m_yMax - FTINT(slot->metrics.height));
-        const SKint32 advance  = FTINT(slot->advance.x);
+        FT_GlyphSlot slot = face->glyph;
+        if (!slot)
+            continue;
 
-        for (iy = 0; iy < slot->bitmap.rows && ibuf; ++iy)
+        const SKint32 yBearing = FTINT(slot->metrics.horiBearingY);
+        const SKint32 xBearing = FTINT(slot->metrics.horiBearingX);
+
+        const SKint32 advance = FTINT(slot->advance.x);
+
+        for (iy = 0; iy < slot->bitmap.rows && imgBuf; ++iy)
         {
-            const SKint32 ny = y + iy + baseline;
+            const SKint32 ny = y + iy;
+
             for (ix = 0; ix < slot->bitmap.width; ix++)
             {
-                const SKint32 nx = x + ix;
-                const SKuint8 ch = *ibuf++;
+                const SKint32 nx = x + ix + xBearing;
+                const SKuint8 ch = *imgBuf++;
                 if (ch != 0)
                     setPixel(nx, ny, pixels, 0xFFFFFFFF);
                 else
-                    setPixel(nx, ny, pixels, 0);
+                    setPixel(nx, ny, pixels, 0x00000000);
             }
         }
 
-        SDL_Rect& ch = m_chars[i - CharStart];
+        Char& ch = m_chars[i - CharStart];
 
         ch.x = x;
         ch.y = y;
         ch.w = advance;
         ch.h = m_yMax;
+        ch.o = skMax<SKint32>(0, m_yMax - yBearing);
 
-        SKint32 nx = (m_xMax + spacer);
+
+        const SKint32 nx = m_xMax + Spacer;
         x += nx;
         if (x + nx > m_width)
         {
             x = 0;
-            y += (m_yMax + spacer);
+            y += m_yMax + Spacer;
         }
     }
 
@@ -234,7 +241,7 @@ void Font::draw(SDL_Renderer*  renderer,
                 skScalar       x,
                 skScalar       y,
                 const skColor& color,
-                SKsize         len)
+                SKsize         len) const
 {
     if (!text || !*text)
         return;
@@ -242,43 +249,68 @@ void Font::draw(SDL_Renderer*  renderer,
     if (len == SK_NPOS)
         len = strlen(text);
 
-    SDL_Rect dst   = NullChar;
-    skScalar xOffs = x;
+    SDL_Rect       dst{};
+    const skScalar xOffs = x;
 
-    SDL_SetTextureColorMod(m_texture,
-                           (SKuint8)(color.r * 255.0),
-                           (SKuint8)(color.g * 255.0),
-                           (SKuint8)(color.b * 255.0));
+    SKuint8 r, g, b;
+    color.asRGB888(r, g, b);
+    SDL_SetTextureColorMod(m_texture, r, g, b);
 
     for (SKsize i = 0; i < len; ++i)
     {
-        SKuint8 ch = text[i];
+        const SKuint8 ch = text[i];
 
         if (ch == '\n' || ch == '\r')
         {
-            y += m_yMax * m_pointScale;
+            y += skScalar(m_yMax) * m_pointScale;
             x = xOffs;
         }
         else if (ch == ' ' || ch == '\t')
         {
-            x += m_xMax * skScalar(.5) * m_pointScale;
+            x += skScalar(m_xMax) * skScalar(.5) * m_pointScale;
         }
         else
         {
-            const SDL_Rect& cch = getBoundsFor(ch);
+            const Char& cch = getBoundsFor(ch);
             if (cch.w > 0)
             {
                 dst.x = (int)x;
                 dst.y = (int)y;
-                dst.w = int(cch.w * m_pointScale);
-                dst.h = int(cch.h * m_pointScale);
+                dst.y += int(skScalar(cch.o) * m_pointScale);
+
+                dst.w = int(skScalar(cch.w) * m_pointScale);
+                dst.h = int(skScalar(cch.h) * m_pointScale);
 
                 if (dst.w > 0 && dst.h > 0)
                 {
-                    SDL_RenderCopy(renderer, m_texture, &cch, &dst);
-                    x += dst.w;
+                    SDL_Rect src = {cch.x, cch.y, cch.w, cch.h};
+                    SDL_RenderCopy(renderer, m_texture, &src, &dst);
+                    x += skScalar(dst.w);
                 }
             }
         }
     }
+}
+
+void Font::draw(SDL_Renderer*  renderer,
+                skScalar       val,
+                skScalar       x,
+                skScalar       y,
+                const skColor& col) const
+{
+    char buf[33];
+
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", (float)val);
+    draw(renderer, buf, x, y, col, len);
+}
+
+void Font::draw(SDL_Renderer*  renderer,
+                SKint32       val,
+                skScalar       x,
+                skScalar       y,
+                const skColor& col) const
+{
+    char buf[33];
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
+    draw(renderer, buf, x, y, col, len);
 }

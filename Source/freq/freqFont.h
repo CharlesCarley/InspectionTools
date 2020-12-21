@@ -30,9 +30,17 @@ struct SDL_Rect;
 
 class Font
 {
+public:
+    struct Char
+    {
+        SKint32 x, y;
+        SKint32 w, h;
+        SKint32 o;
+    };
+
 private:
     SDL_Texture* m_texture;
-    SDL_Rect*    m_chars;
+    Char*        m_chars;
     SKint32      m_size;
     SKint32      m_dpi;
     SKint32      m_width;
@@ -42,9 +50,9 @@ private:
     SKint32      m_yMax;
     skScalar     m_pointScale;
 
-    void setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color);
+    void setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color) const;
 
-    const SDL_Rect& getBoundsFor(char ch);
+    const Char& getBoundsFor(char ch) const;
 
 public:
     Font();
@@ -59,8 +67,19 @@ public:
               skScalar       x,
               skScalar       y,
               const skColor& col,
-              SKsize         len = SK_NPOS);
+              SKsize         len = SK_NPOS) const;
 
+    void draw(SDL_Renderer*  renderer,
+              skScalar       val,
+              skScalar       x,
+              skScalar       y,
+              const skColor& col) const;
+
+    void draw(SDL_Renderer*  renderer,
+              SKint32        val,
+              skScalar       x,
+              skScalar       y,
+              const skColor& col) const;
 
     inline void setPointScale(skScalar scale)
     {

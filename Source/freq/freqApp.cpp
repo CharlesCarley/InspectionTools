@@ -33,6 +33,7 @@ const skColor BackgroundGraph  = skColor(0x222222FF);
 const skColor BackgroundGraph2 = skColor(0x333333FF);
 const skColor BackgroundGraph3 = skColor(0x333333FF);
 const skColor LineColor        = skColor(0x5EC4F6FF);
+const skColor Text             = skColor(0x777777FF);
 
 class PrivateApp
 {
@@ -46,6 +47,7 @@ private:
     bool             m_redraw;
     bool             m_showGrid;
     bool             m_leftIsDown;
+    bool             m_ctrlDown;
     skRectangle      m_displayRect;
     skScalar         m_zoom;
     skScalar         m_scale;
@@ -53,6 +55,7 @@ private:
     skVector2        m_origin;
     skScalar         m_xAxisScale;
     skScalar         m_yAxisScale;
+    skVector2        m_displayOffs;
 
 public:
     PrivateApp(FreqApplication* parent) :
@@ -65,11 +68,13 @@ public:
         m_redraw(true),
         m_showGrid(false),
         m_leftIsDown(false),
+        m_ctrlDown(false),
         m_displayRect(0, 0, 0, 0),
         m_zoom(32),
         m_scale(0),
         m_xAxisScale(1),
-        m_yAxisScale(1)
+        m_yAxisScale(1),
+        m_displayOffs(0, 0)
     {
     }
 
@@ -197,11 +202,17 @@ public:
         const skScalar xOffset = m_origin.x + m_pan.x;
         const skScalar yOffset = m_origin.y + m_pan.y;
 
+        m_font->setPointScale(12);
         stp = xMin + skFmod(xMin + xOffset, sxt);
         while (stp < xMax)
         {
             if (m_displayRect.containsX(stp))
                 SDL_RenderDrawLineF(m_renderer, stp, yMin, stp, yMax);
+
+            skScalar v = stp;
+            v -= (xOffset);
+            v /= (m_xAxisScale / m_zoom);
+            m_font->draw(m_renderer, (int)v, stp, yMax - 16, Text);
             stp += sxt;
         }
 
@@ -210,6 +221,12 @@ public:
         {
             if (m_displayRect.containsY(stp))
                 SDL_RenderDrawLineF(m_renderer, xMin, stp, xMax, stp);
+
+            skScalar v = stp;
+            v -= (yOffset);
+            v /= (m_yAxisScale / m_zoom);
+
+            m_font->draw(m_renderer, -(int)v, 2, stp, Text);
             stp += syt;
         }
 
@@ -241,16 +258,29 @@ public:
             switch (evt.type)
             {
             case SDL_KEYDOWN:
+                if (evt.key.keysym.sym == SDLK_LCTRL)
+                    m_ctrlDown = true;
                 if (evt.key.keysym.sym == SDLK_ESCAPE)
                     m_quit = true;
+                if (evt.key.keysym.sym == SDLK_c)
+                {
+                    m_pan      = skVector2::Zero;
+                    m_origin.x = m_displayRect.getLeft();
+                    m_origin.y = m_displayRect.getBottom();
+                    m_scale    = 1;
+                    m_redraw   = true;
+                }
+
                 break;
             case SDL_KEYUP:
+                if (evt.key.keysym.sym == SDLK_LCTRL)
+                    m_ctrlDown = false;
+
                 if (evt.key.keysym.sym == SDLK_g)
                 {
                     m_showGrid = !m_showGrid;
                     m_redraw   = true;
                 }
-
                 break;
             case SDL_MOUSEWHEEL:
                 if (evt.wheel.y > 0)
@@ -267,8 +297,20 @@ public:
             case SDL_MOUSEMOTION:
                 if (m_leftIsDown)
                 {
-                    m_pan.x += evt.motion.xrel;
-                    m_pan.y += evt.motion.yrel;
+                    if (m_ctrlDown)
+                    {
+                        m_scale += evt.motion.yrel * 12;
+                        if (m_scale > m_displayRect.width * 5)
+                            m_scale = m_displayRect.width * 5;
+                        if (m_scale < -1)
+                            m_scale = -1;
+                    }
+                    else
+                    {
+                        m_pan.x += evt.motion.xrel;
+                        m_pan.y += evt.motion.yrel;
+                    }
+
                     m_redraw = true;
                 }
                 break;
@@ -356,7 +398,9 @@ public:
         if (!m_renderer)
             return;
 
-        m_surface = SDL_GetWindowSurface(m_window);
+        m_surface       = SDL_GetWindowSurface(m_window);
+        m_displayOffs.x = 50;
+        m_displayOffs.y = 20;
 
         m_displayRect.width  = skScalar(w);
         m_displayRect.height = skScalar(h);
@@ -367,8 +411,8 @@ public:
         m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
         m_xAxisScale = m_displayRect.width / skScalar(256.0);
         m_showGrid   = true;
-        m_origin.x   = m_displayRect.getLeft();
-        m_origin.y   = m_displayRect.getBottom();
+        m_origin.x   = m_displayRect.getLeft() + m_displayOffs.x;
+        m_origin.y   = m_displayRect.getBottom() - m_displayOffs.y;
 
         while (!m_quit)
         {
