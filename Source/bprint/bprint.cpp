@@ -250,7 +250,7 @@ public:
     int print()
     {
         SKuint8 buffer[1025];
-        m_tmp.reserve(1024);
+        m_tmp.reserve(16);
 
         SKsize n;
         SKsize a, r;
@@ -337,7 +337,7 @@ public:
                     r += m_shift;
                     r %= m_base;
                 }
-                m_tmp.append(m_symbols.at(0));
+                m_tmp.append(m_symbols.at(r));
             }
         }
 
