@@ -29,32 +29,22 @@ using namespace skCommandLine;
 
 enum SwitchIds
 {
-    BP_SHOW_ADDRESS = 0,
-    BP_PAD_ZERO,
+    BP_PAD_ZERO = 0,
     BP_SYMBOLS,
     BP_BASE,
     BP_SHIFT,
     BP_RANGE,
     BP_ADD_WHITESPACE,
     BP_ADD_NEW_LINE,
-    BP_OUT,
     BP_MAX
 };
 
 const Switch Switches[BP_MAX] = {
     {
-        BP_SHOW_ADDRESS,
-        0,
-        "show-address",
-        "Display the current address.",
-        true,
-        0,
-    },
-    {
         BP_PAD_ZERO,
         'p',
         "pad",
-        "Supply a symbol string",
+        "Pad the result with the symbol at index 0",
         true,
         0,
     },
@@ -70,7 +60,7 @@ const Switch Switches[BP_MAX] = {
         BP_BASE,
         'b',
         "base",
-        "convert base",
+        "Convert the current byte to the supplied base.",
         true,
         1,
     },
@@ -78,7 +68,7 @@ const Switch Switches[BP_MAX] = {
         BP_SHIFT,
         's',
         "shift",
-        "convert base",
+        "Shift the symbol index by the supplied value",
         true,
         1,
     },
@@ -97,7 +87,7 @@ const Switch Switches[BP_MAX] = {
         BP_ADD_WHITESPACE,
         0,
         "ws",
-        "Add white space",
+        "Add white space between bytes",
         true,
         0,
     },
@@ -105,15 +95,7 @@ const Switch Switches[BP_MAX] = {
         BP_ADD_NEW_LINE,
         0,
         "nl",
-        "Add white space",
-        true,
-        1,
-    },
-    {
-        BP_OUT,
-        'o',
-        "output",
-        "Add white space",
+        "Add a newline every N bytes.",
         true,
         1,
     },
@@ -136,7 +118,7 @@ private:
 
     void makeSymbolDefault()
     {
-        m_symbols.reserve(63);  // +1
+        m_symbols.reserve(96);  // +1
         int i;
         for (i = 0; i < 10; ++i)
             m_symbols.append('0' + i);
@@ -144,6 +126,14 @@ private:
             m_symbols.append('A' + i);
         for (i = 0; i < 26; ++i)
             m_symbols.append('a' + i);
+        for (i = 32; i <= 47; ++i)
+            m_symbols.append(i);
+        for (i = 58; i <= 64; ++i)
+            m_symbols.append(i);
+        for (i = 91; i <= 96; ++i)
+            m_symbols.append(i);
+        for (i = 123; i <= 126; ++i)
+            m_symbols.append(i);
     }
 
 public:
@@ -206,7 +196,6 @@ public:
             m_shift = psr.getValueInt(BP_SHIFT, 0, 0);
             m_shift = skMax(0, m_shift);
         }
-
 
         if (m_symbols.empty())
         {
@@ -280,8 +269,8 @@ public:
 
                     if (m_nl > 0)
                     {
-                         if (m_total++ % (m_nl) == (m_nl - 1))
-                             putchar('\n');
+                        if (m_total++ % (m_nl) == (m_nl - 1))
+                            putchar('\n');
                     }
                 }
             }
