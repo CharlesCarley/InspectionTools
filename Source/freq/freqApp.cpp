@@ -23,20 +23,19 @@
 #include "Math/skRectangle.h"
 #include "Math/skVector2.h"
 #include "Utils/skLogger.h"
-
 #include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
 
-// colors
-const skColor Clear            = skColor(0x555555FF);
-const skColor Background       = skColor(0x282828FF);
-const skColor BackgroundGraph  = skColor(0x333333FF);
-const skColor BackgroundGraph2 = skColor(0x444444FF);
-const skColor BackgroundGraph3 = skColor(0x444444FF);
-const skColor LineColor        = skColor(0x5EC4F6FF);
-const skColor Background2      = skColor(0x181818FF);
-const skColor Text             = skColor(0x808080FF);
+const skColor  Clear            = skColor(0x555555FF);
+const skColor  Background       = skColor(0x282828FF);
+const skColor  BackgroundGraph  = skColor(0x333333FF);
+const skColor  BackgroundGraph2 = skColor(0x444444FF);
+const skColor  BackgroundGraph3 = skColor(0x444444FF);
+const skColor  LineColor        = skColor(0x5EC4F6FF);
+const skColor  Background2      = skColor(0x181818FF);
+const skColor  Text             = skColor(0x808080FF);
+const skScalar StepScale        = skScalar(0.125);
 
 class PrivateApp
 {
@@ -205,13 +204,9 @@ public:
                   const skColor&  color) const
     {
         setColor(color);
-        const skScalar vs = skScalar(1) / skScalar(8);
 
-        const skScalar w = (xMax - xMin) / m_zoom;
-        const skScalar h = (yMax - yMin) / m_zoom;
-
-        const skScalar sxt = w * vs;
-        const skScalar syt = h * vs;
+        const skScalar sxt = ((xMax - xMin) / m_zoom) * StepScale;
+        const skScalar syt = ((yMax - yMin) / m_zoom) * StepScale;
 
         skScalar       stp;
         const skScalar xOffset = m_origin.x + m_pan.x;
@@ -261,18 +256,14 @@ public:
     {
         setColor(color);
 
-        const skScalar w = (xMax - xMin);
-        const skScalar h = (yMax - yMin);
-
-        const skScalar vs = (skScalar(1) / skScalar(8));
-
-        const skScalar sxt = (w * vs);
-        const skScalar syt = (h * vs);
+        const skScalar sxt = (xMax - xMin) * StepScale;
+        const skScalar syt = (yMax - yMin) * StepScale;
 
         const skScalar xOffset = m_origin.x + m_pan.x;
         const skScalar yOffset = m_origin.y + m_pan.y;
-        const skScalar xFac    = 1.f / (m_xAxisScale / m_zoom);
-        const skScalar yFac    = 1.f / (m_yAxisScale / m_zoom);
+
+        const skScalar xFac = 1.f / (m_xAxisScale / m_zoom);
+        const skScalar yFac = 1.f / (m_yAxisScale / m_zoom);
 
         fillRect(skRectangle(0, 0, m_displayOffs.x, yMax));
         fillRect(skRectangle(m_displayOffs.x,
