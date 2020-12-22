@@ -352,7 +352,7 @@ public:
                 if (m_leftIsDown)
                 {
                     if (m_ctrlDown)
-                        setScale(evt.motion.yrel * 12);
+                        setScale(skScalar(evt.motion.yrel) * 12);
                     else
                     {
                         m_pan.x += evt.motion.xrel;

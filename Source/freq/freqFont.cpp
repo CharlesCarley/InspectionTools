@@ -26,7 +26,6 @@
 #define FTINT(x) ((x) >> 6)
 #define FTI64(x) ((x) << 6)
 
-#define SDL_MAIN_HANDLED
 #include "DejaVu_ttf.inl"
 #include "SDL.h"
 
