@@ -22,6 +22,8 @@
 #include "Math/skColor.h"
 #include "Math/skRectangle.h"
 #include "Math/skVector2.h"
+#include "Utils/skLogger.h"
+
 #include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
@@ -41,7 +43,6 @@ class PrivateApp
 private:
     SDL_Window*      m_window;
     SDL_Renderer*    m_renderer;
-    SDL_Surface*     m_surface;
     Font*            m_font;
     FreqApplication* m_parent;
     bool             m_quit;
@@ -62,7 +63,6 @@ public:
     PrivateApp(FreqApplication* parent) :
         m_window(nullptr),
         m_renderer(nullptr),
-        m_surface(nullptr),
         m_font(nullptr),
         m_parent(parent),
         m_quit(false),
@@ -83,9 +83,6 @@ public:
     {
         delete m_font;
 
-        if (m_surface)
-            SDL_FreeSurface(m_surface);
-
         if (m_renderer)
             SDL_DestroyRenderer(m_renderer);
 
@@ -93,6 +90,23 @@ public:
             SDL_DestroyWindow(m_window);
 
         SDL_Quit();
+    }
+
+    void getOrigin(skScalar& x, skScalar& y)
+    {
+        x = m_displayRect.x + m_displayOffs.x;
+        y = m_displayRect.y + m_displayRect.height - m_displayOffs.y;
+    }
+
+    void setScale(const skScalar fac)
+    {
+        m_scale += fac;
+
+        if (m_scale > m_displayRect.width * 5)
+            m_scale = m_displayRect.width * 5;
+
+        if (m_scale < -1)
+            m_scale = -1;
     }
 
     void setColor(const skColor& color) const
@@ -246,15 +260,15 @@ public:
                     const skColor&  color) const
     {
         setColor(color);
-        const skScalar vs = skScalar(1) / skScalar(8);
 
-        const skScalar w = (xMax - xMin) / m_zoom;
-        const skScalar h = (yMax - yMin) / m_zoom;
+        const skScalar w = (xMax - xMin);
+        const skScalar h = (yMax - yMin);
 
-        const skScalar sxt = w * vs;
-        const skScalar syt = h * vs;
+        const skScalar vs = (skScalar(1) / skScalar(8));
 
-        skScalar       stp;
+        const skScalar sxt = (w * vs);
+        const skScalar syt = (h * vs);
+
         const skScalar xOffset = m_origin.x + m_pan.x;
         const skScalar yOffset = m_origin.y + m_pan.y;
         const skScalar xFac    = 1.f / (m_xAxisScale / m_zoom);
@@ -268,6 +282,7 @@ public:
 
         m_font->setPointScale(12);
 
+        skScalar stp;
         stp = xMin + skFmod(xMin + xOffset, sxt);
         while (stp < xMax)
         {
@@ -291,6 +306,7 @@ public:
                          2,
                          stp - 6,
                          Text);
+
             stp += syt;
         }
     }
@@ -309,13 +325,11 @@ public:
                     m_quit = true;
                 if (evt.key.keysym.sym == SDLK_c)
                 {
-                    m_pan      = skVector2::Zero;
-                    m_origin.x = m_displayRect.getLeft() + m_displayOffs.x;
-                    m_origin.y = m_displayRect.getBottom() - m_displayOffs.y;
-                    m_scale    = 1;
-                    m_redraw   = true;
+                    m_pan = skVector2::Zero;
+                    getOrigin(m_origin.x, m_origin.y);
+                    m_scale  = 1;
+                    m_redraw = true;
                 }
-
                 break;
             case SDL_KEYUP:
                 if (evt.key.keysym.sym == SDLK_LCTRL)
@@ -329,27 +343,16 @@ public:
                 break;
             case SDL_MOUSEWHEEL:
                 if (evt.wheel.y > 0)
-                    m_scale -= 120;
+                    setScale(-120);
                 else
-                    m_scale += 120;
-
-                if (m_scale > m_displayRect.width * 5)
-                    m_scale = m_displayRect.width * 5;
-                if (m_scale < -1)
-                    m_scale = -1;
+                    setScale(120);
                 m_redraw = true;
                 break;
             case SDL_MOUSEMOTION:
                 if (m_leftIsDown)
                 {
                     if (m_ctrlDown)
-                    {
-                        m_scale += evt.motion.yrel * 12;
-                        if (m_scale > m_displayRect.width * 5)
-                            m_scale = m_displayRect.width * 5;
-                        if (m_scale < -1)
-                            m_scale = -1;
-                    }
+                        setScale(evt.motion.yrel * 12);
                     else
                     {
                         m_pan.x += evt.motion.xrel;
@@ -381,7 +384,6 @@ public:
         clear(Clear);
 
         skRectangle scaledRect(m_displayRect);
-        scaledRect.move(m_pan.x, m_pan.y);
         scaledRect.expand(m_scale, m_scale);
 
         setColor(Background);
@@ -433,7 +435,11 @@ public:
 
     void run(const SKint32 w, const SKint32 h)
     {
-        SDL_Init(SDL_INIT_VIDEO);
+        if (SDL_Init(SDL_INIT_VIDEO) < 0)
+        {
+            skLogf(LD_ERROR, "SDL initialization failed:\n\t%s\n", SDL_GetError());
+            return;
+        }
 
         m_window = SDL_CreateWindow("Frequency Viewer",
                                     SDL_WINDOWPOS_CENTERED,
@@ -442,15 +448,19 @@ public:
                                     h,
                                     SDL_WINDOW_SHOWN);
         if (!m_window)
+        {
+            skLogf(LD_ERROR, "Failed to create window:\n\t%s\n", SDL_GetError());
             return;
-
+        }
         m_renderer = SDL_CreateRenderer(m_window,
                                         -1,
                                         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         if (!m_renderer)
+        {
+            skLogf(LD_ERROR, "Failed to create renderer:\n\t%s\n", SDL_GetError());
             return;
+        }
 
-        m_surface       = SDL_GetWindowSurface(m_window);
         m_displayOffs.x = 50;
         m_displayOffs.y = 20;
 
@@ -461,10 +471,10 @@ public:
         m_font->loadInternal(m_renderer, 32, 72);
 
         m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
-        m_xAxisScale = (m_displayRect.width) / skScalar(256.0);
-        m_showGrid   = true;
-        m_origin.x   = m_displayRect.getLeft() + m_displayOffs.x;
-        m_origin.y   = m_displayRect.getBottom() - m_displayOffs.y;
+        m_xAxisScale = m_displayRect.width / skScalar(256.0);
+
+        m_showGrid = true;
+        getOrigin(m_origin.x, m_origin.y);
 
         while (!m_quit)
         {

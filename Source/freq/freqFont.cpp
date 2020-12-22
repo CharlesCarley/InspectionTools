@@ -255,10 +255,10 @@ void Font::draw(SDL_Renderer*  renderer,
             y += skScalar(m_yMax) * m_pointScale;
             x = xOffs;
         }
-        else if (ch == ' ' || ch == '\t')
-        {
-            x += skScalar(m_xMax) * skScalar(.5) * m_pointScale;
-        }
+        else if (ch == ' ')
+            x += skScalar(m_xMax) * m_pointScale;
+        else if (ch == '\t')
+            x += 4 * skScalar(m_xMax) * m_pointScale;
         else
         {
             const Char& cch = getBoundsFor(ch);
@@ -288,7 +288,6 @@ void Font::draw(SDL_Renderer*  renderer,
                 const skColor& col) const
 {
     char buf[33];
-
     const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", (float)val);
     draw(renderer, buf, x, y, col, len);
 }
@@ -300,7 +299,6 @@ void Font::draw(SDL_Renderer*  renderer,
                 const skColor& col) const
 {
     char buf[33];
-
     const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
     draw(renderer, buf, x, y, col, len);
 }
