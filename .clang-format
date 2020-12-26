@@ -24,6 +24,7 @@ IncludeBlocks:        Merge
 AccessModifierOffset: -4
 NamespaceIndentation: All
 PointerAlignment:     Left
+DerivePointerAlignment: false
 SpaceBeforeParens:    ControlStatements
 
 Standard: Auto

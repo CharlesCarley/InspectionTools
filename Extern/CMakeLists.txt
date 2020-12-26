@@ -19,5 +19,20 @@ if (InspectionTools_BUILD_SDL)
     set(FreeType_TargetGroup   Extern)
 
     subdirs(FreeType)
+
+    set(FreeImage_ExternalTarget TRUE)
+    set(FreeImage_TargetFolders  TRUE)
+    set(FreeImage_TargetName     FreeImage)
+    set(FreeImage_TargetGroup    Extern)
+
+    subdirs(FreeImage)
+
+
+    set(Image_ExternalTarget TRUE)
+    set(Image_TargetFolders  TRUE)
+    set(Image_TargetName     Image)
+    set(Image_TargetGroup    Extern)
+
+    subdirs(Image)
 endif()
 

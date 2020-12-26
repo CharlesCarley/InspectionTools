@@ -10,3 +10,9 @@
 [submodule "Extern/Freetype"]
 	path = Extern/Freetype
 	url = https://github.com/CharlesCarley/FreeType.git
+[submodule "Extern/Image"]
+	path = Extern/Image
+	url = https://github.com/CharlesCarley/Image.git
+[submodule "Extern/FreeImage"]
+	path = Extern/FreeImage
+	url = https://github.com/CharlesCarley/FreeImage.git
