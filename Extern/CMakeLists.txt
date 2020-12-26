@@ -12,5 +12,12 @@ if (InspectionTools_BUILD_SDL)
     set(Math_TargetName  Math)
     set(Math_TargetGroup Extern)
     subdirs(Math)
+
+    set(FreeType_ExternalTarget TRUE)
+    set(FreeType_TargetFolders TRUE)
+    set(FreeType_TargetName    FreeType)
+    set(FreeType_TargetGroup   Extern)
+
     subdirs(FreeType)
 endif()
+
