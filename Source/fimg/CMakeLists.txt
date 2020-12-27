@@ -1,9 +1,11 @@
 set(TargetName fimg)
 
 set(Target_SRC
-	fimg.cpp
+    fimg.cpp
     fimgApp.cpp
     fimgApp.h
+    fimgPixelMap.cpp
+    fimgPixelMap.h
     ../freq/freqFont.cpp
     ../freq/freqFont.h
 )

@@ -26,7 +26,6 @@
 #include "Utils/skMemoryUtils.h"
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
-
 #include "fimgApp.h"
 
 using namespace skHexPrint;
@@ -104,7 +103,7 @@ const Switch Switches[FI_MAX_ENUM] = {
     },
 };
 
-class Application
+class Application : public FimgApplication
 {
 private:
     skFileStream m_stream;
@@ -113,21 +112,13 @@ private:
     SKint32      m_height;
     bool         m_window;
     skString     m_output;
-    SKint32      m_max;
-    bool         m_flip;
-    SKuint32     m_offset;
-    skImage*     m_image;
 
 public:
     Application() :
         m_addressRange(),
         m_width(800),
         m_height(600),
-        m_window(false),
-        m_max(0),
-        m_flip(false),
-        m_offset(0),
-        m_image(nullptr)
+        m_window(false)
     {
         skImage::initialize();
         m_addressRange[0] = SK_NPOS32;
@@ -136,7 +127,7 @@ public:
 
     ~Application()
     {
-        delete m_image;
+        FimgApplication::~FimgApplication();
         skImage::finalize();
     }
 
@@ -151,14 +142,11 @@ public:
             m_addressRange[0] = psr.getValueInt(FI_RANGE, 0, SK_NPOS32, 16);
             m_addressRange[1] = psr.getValueInt(FI_RANGE, 1, SK_NPOS32, 10);
         }
-        m_max    = skClamp<SKint32>(psr.getValueInt(FI_MAX, 0, 16), 1, SK_NPOS32H);
-        m_offset = psr.getValueInt(FI_OFFSET, 0, 0);
-        m_offset = skClamp<SKuint32>(m_offset, 0, 32);
 
-#ifdef USING_SDL
+        m_max = skClamp<SKint32>(psr.getValueInt(FI_MAX, 0, 16), 16, 256);
+
         if (psr.isPresent(FI_GRAPH))
         {
-            m_offset = 0;
             m_window = true;
             m_width  = psr.getValueInt(FI_GRAPH, 0, 640);
             m_height = psr.getValueInt(FI_GRAPH, 1, 480);
@@ -166,7 +154,6 @@ public:
             m_width  = skClamp(m_width, 200, 7680);
             m_height = skClamp(m_height, 100, 4320);
         }
-#endif
 
         m_output = psr.getValueString(FI_OUTPUT, 0);
         if (m_output.empty() && !m_window)
@@ -174,7 +161,6 @@ public:
             skLogf(LD_ERROR, "No output file supplied\n");
             return 1;
         }
-
 
         using StringArray = Parser::StringArray;
         StringArray& args = psr.getArgList();
@@ -197,20 +183,7 @@ public:
     int print()
     {
         buildImage();
-
-#if defined(USING_SDL)
-        if (m_window)
-        {
-            FreqApplication app;
-            app.setBuffer(m_image, m_max);
-            app.main(m_width, m_height);
-        }
-        else
-        {
-            printImage();
-        }
-#else
-#endif
+        run(m_width, m_height);
         return 0;
     }
 
@@ -229,21 +202,11 @@ public:
         else
             r = n;
 
-        const double dims = sqrt(n);
-
-        SKint32 x = 0, y = 0, lx, ly;
-        SKint32 h = skMath::pow2((SKint32)((double)(n) / dims));
-        SKint32 w = h;
-
-        if (m_flip)
-            skSwap<SKint32>(w, h);
-
-        m_max = skMin<SKint32>(m_max, (SKint32)w);
-
-        m_image = new skImage(w, h, skPixelFormat::SK_BGRA);
+        SKint32  x = 0, y = 0;
+        skImage* working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
+        m_images.push_back(working);
 
         SKsize br, tr = 0, i, j = 0, offs = 0, yOffs = 0;
-
         while (!m_stream.eof() && tr < r)
         {
             br = m_stream.read(buffer, skMin<SKsize>(1024, r));
@@ -258,65 +221,27 @@ public:
                         const auto ch = (SKubyte)buffer[i];
 
                         skPixel color(0x00000000);
+                        color.set(skPixel(ch, ch, ch, 128));
 
-                        color.set(skPixel(ch, ch, ch, ch *2));
-
-                        if (m_flip)
+                        if (x++ % m_max == m_max - 1)
                         {
+                            x = 0;
                             if (y++ % m_max == m_max - 1)
                             {
-                                y = (SKint32)j * (SKint32)m_max;
-                                if (x++ % m_max == m_max - 1)
-                                    yOffs += m_offset;
+                                y = 0;
 
-                                if (x % w == w - 1)
-                                {
-                                    yOffs = 0;
-                                    offs += m_offset;
-                                    j++;
-                                    x = 0;
-                                }
+                                working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
+                                m_images.push_back(working);
                             }
-
-                            lx = x + yOffs;
-                            ly = y + offs;
-                        }
-                        else
-                        {
-                            if (x++ % (m_max) == (m_max)-1)
-                            {
-                                x = (SKint32)j * (SKint32)m_max;
-
-                                if (y++ % m_max == m_max - 1)
-                                    yOffs += m_offset;
-
-                                if (y % h == h - 1)
-                                {
-                                    yOffs = 0;
-                                    offs += m_offset;
-                                    j++;
-                                    y = 0;
-                                }
-                            }
-
-                            lx = x + offs;
-                            ly = y + yOffs;
                         }
 
-                        m_image->setPixel(lx, ly, color);
+                        working->setPixel(x, y, color);
                     }
                 }
             }
             tr += br;
         }
     }
-
-    void printImage()
-    {
-        if (m_image && !m_output.empty())
-            m_image->save(IMF_PNG, (m_output + ".png").c_str());
-    }
-
 };
 
 int main(int argc, char** argv)
