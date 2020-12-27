@@ -27,9 +27,7 @@
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
 
-#ifdef USING_SDL
-#include "freqApp.h"
-#endif  // USING_SDL
+#include "fimgApp.h"
 
 using namespace skHexPrint;
 using namespace skCommandLine;

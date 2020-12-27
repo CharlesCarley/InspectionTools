@@ -1,26 +1,21 @@
 set(TargetName fimg)
 
-set(Target_SRC  freq.cpp)
+set(Target_SRC
+	fimg.cpp
+    fimgApp.cpp
+    fimgApp.h
+    ../freq/freqFont.cpp
+    ../freq/freqFont.h
+)
+set(Target_INC ${Utils_INCLUDE} 
+                ${Math_INCLUDE} 
+                ${SDL_INCLUDE}
+                ../freq)
 
-if (InspectionTools_BUILD_SDL)
-    set(Target_SRC_EX
-        freqApp.cpp
-        freqApp.h
-        freqFont.cpp
-        freqFont.h
-    )
-    set(Target_INC ${Utils_INCLUDE} 
-                   ${Math_INCLUDE} 
-                   ${SDL_INCLUDE})
-    set(Target_LNK  Utils 
-                    Math 
-                    ${SDL_LIBS})
-    add_definitions(-DUSING_SDL)
-else()
-    set(Target_INC ${Utils_INCLUDE})
-    set(Target_LNK  Utils)
-endif()
-
+set(Target_LNK  Utils 
+                Math 
+                ${SDL_LIBS})
+add_definitions(-DUSING_SDL)
 add_executable(${TargetName} 
                ${Target_SRC}
                ${Target_SRC_EX})

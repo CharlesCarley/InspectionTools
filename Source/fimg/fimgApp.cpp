@@ -17,7 +17,7 @@
   3. This notice may not be removed or altered from any source distribution.
 -------------------------------------------------------------------------------
 */
-#include "freqApp.h"
+#include "fimgApp.h"
 #include <cstdio>
 #include "Math/skColor.h"
 #include "Math/skRectangle.h"
@@ -359,10 +359,6 @@ public:
         skRectangle r;
         r.setSize(m_imageSize.x, m_imageSize.y);
         skVector2 xy0, xy1, xys0, xys1;
-        r.getBounds(xy0, xy1);
-
-        screenToView(xy0, xys0);
-        screenToView(xy1, xys1);
 
         SDL_Rect srct, drct;
         srct = {
