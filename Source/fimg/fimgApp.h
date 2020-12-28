@@ -45,13 +45,18 @@ protected:
 
     friend class PrivateApp;
 
+    void clear();
+
 public:
     FimgApplication() :
         m_max(0)
     {
     }
 
-    ~FimgApplication();
+    virtual ~FimgApplication()
+    {
+        clear();
+    }
 
 
     void run(SKint32 w, SKint32 h);

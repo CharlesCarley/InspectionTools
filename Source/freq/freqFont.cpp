@@ -159,7 +159,7 @@ void Font::loadInternal(SDL_Renderer* renderer,
                                   m_height);
 
     SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
-    SDL_SetTextureScaleMode(m_texture, SDL_ScaleModeNearest);
+    SDL_SetTextureScaleMode(m_texture, SDL_ScaleModeLinear);
 
     void* pixels;
     SDL_LockTexture(m_texture, nullptr, &pixels, &m_pitch);

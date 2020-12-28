@@ -127,7 +127,6 @@ public:
 
     ~Application()
     {
-        FimgApplication::~FimgApplication();
         skImage::finalize();
     }
 
