@@ -87,3 +87,7 @@
 
 
 ```
+
+ ``` ./freq fimg -w 800 600```
+
+![ScreenShot](ScreenShot.png)
