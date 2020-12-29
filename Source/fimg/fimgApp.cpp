@@ -22,7 +22,6 @@
 #include "Image/skPalette.h"
 #include "Math/skColor.h"
 #include "Math/skRectangle.h"
-#include "Math/skTransform2D.h"
 #include "Math/skVector2.h"
 #include "Utils/skLogger.h"
 #include "Utils/skPlatformHeaders.h"
@@ -30,18 +29,17 @@
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
 
-const skColor  Clear            = skColor(0x555555FF);
-const skColor  Background       = skColor(0x282828FF);
-const skColor  BackgroundGraph  = skColor(0x333333FF);
-const skColor  BackgroundGraph2 = skColor(0x252525FF);
-const skColor  BackgroundGraph3 = skColor(0x545454FF);
-const skColor  LineColor        = skColor(0x5EC4F6FF);
-const skColor  Background2      = skColor(0x181818FF);
-const skColor  White            = skColor(0xFFFFFFFF);
-const skColor  Black            = skColor(0x000000FF);
-const skColor  Red              = skColor(0xFF0000FF);
-const skColor  Text             = skColor(0x808080FF);
-const skScalar StepScale        = skScalar(0.125);
+const skColor Clear            = skColor(0x555555FF);
+const skColor Background       = skColor(0x282828FF);
+const skColor BackgroundGraph  = skColor(0x333333FF);
+const skColor BackgroundGraph2 = skColor(0x252525FF);
+const skColor BackgroundGraph3 = skColor(0x545454FF);
+const skColor LineColor        = skColor(0x5EC4F6FF);
+const skColor Background2      = skColor(0x181818FF);
+const skColor White            = skColor(0xFFFFFFFF);
+const skColor Black            = skColor(0x000000FF);
+const skColor Red              = skColor(0xFF0000FF);
+const skColor Text             = skColor(0x808080FF);
 
 class PrivateApp
 {
@@ -62,7 +60,6 @@ private:
     skVector2        m_extent;
     skVector2        m_displayOffs;
     skRectangle      m_displayRect;
-    skRectangle      m_displayRectDisp;
     skScalar         m_zoom;
     skScalar         m_zoomMin;
     skScalar         m_scale;
@@ -122,22 +119,22 @@ public:
         m_extent.x = m_displayRect.width;
         m_extent.y = m_displayRect.width;
 
-        int mod = (m_mapCell);
-        if ((int)(m_extent.x) % mod != 0)
-            m_extent.x += mod - (int)(m_extent.x) % mod;
-        if ((int)(m_extent.y) % mod != 0)
-            m_extent.y += mod - (int)(m_extent.y) % mod;
+        const int mod = (int)m_mapCell;
+        if ((int)m_extent.x % mod != 0)
+            m_extent.x += (skScalar)(mod - (int)m_extent.x % mod);
+        if ((int)m_extent.y % mod != 0)
+            m_extent.y += (skScalar)(mod - (int)m_extent.y % mod);
 
         m_view.x = m_extent.x / 2;
         m_view.y = m_extent.y / 2;
 
-        m_zoomMin = m_zoom = (m_extent.x) / m_displayRect.width;
+        m_zoomMin = m_zoom = m_extent.x / m_displayRect.width;
     }
 
     void clampScale(const skScalar fac, bool negate)
     {
-        m_scale += fac * (negate ? -1 : 1);
-        if (m_scale < -1.1)
+        m_scale += fac * (negate ? skScalar(-1) : skScalar(1));
+        if (m_scale < skScalar(-1.1))
             m_scale = 1.0;
 
         if (m_scale > skSqu(m_mapCellSq) / 8)
@@ -171,54 +168,54 @@ public:
         return m_extent;
     }
 
-    inline skVector2 getOffset() const
+    skVector2 getOffset() const
     {
         return skVector2(offsX(), offsY());
     }
 
-    inline void setOffset(const skVector2& offs)
+    void setOffset(const skVector2& offs)
     {
         m_origin = offs;
     }
 
-    inline skScalar offsX() const
+    skScalar offsX() const
     {
         return (-m_view.x + m_origin.x + m_extent.x / 2) / m_zoom;
     }
 
-    inline skScalar offsY() const
+    skScalar offsY() const
     {
         return (-m_view.y + m_origin.y + m_extent.y / 2) / m_zoom;
-        ;
     }
 
-    inline skScalar screenX(const skScalar& vx) const
+    skScalar screenX(const skScalar& vx) const
     {
-        return ((vx - offsX()) * m_zoom);
+        return (vx - offsX()) * m_zoom;
     }
 
-    inline skScalar screenY(const skScalar& vy) const
+    skScalar screenY(const skScalar& vy) const
     {
-        return ((vy - offsY()) * m_zoom);
+        return (vy - offsY()) * m_zoom;
     }
 
-    inline skVector2 view(const skVector2& sc) const
+    skVector2 view(const skVector2& sc) const
     {
         return skVector2(viewX(sc.x), viewY(sc.y));
     }
-    inline skVector2 screen(const skVector2& vp) const
+
+    skVector2 screen(const skVector2& vp) const
     {
         return skVector2(screenX(vp.x), screenY(vp.y));
     }
 
-    inline skScalar viewX(const skScalar& sx) const
+    skScalar viewX(const skScalar& sx) const
     {
-        return (sx / m_zoom) + (offsX());
+        return sx / m_zoom + offsX();
     }
 
-    inline skScalar viewY(const skScalar& sy) const
+    skScalar viewY(const skScalar& sy) const
     {
-        return (sy / m_zoom) + offsY();
+        return sy / m_zoom + offsY();
     }
 
     void screenToView(const skScalar& sx, const skScalar& sy, skScalar& vx, skScalar& vy) const
@@ -229,8 +226,8 @@ public:
 
     void viewToScreen(const skScalar& vx, const skScalar& vy, skScalar& sx, skScalar& sy) const
     {
-        sx = screenX(sx);
-        sy = screenY(sy);
+        sx = screenX(vx);
+        sy = screenY(vy);
     }
 
     void viewToScreen(const skVector2& vc, skVector2& sc) const
@@ -314,9 +311,15 @@ public:
         SDL_RenderFillRect(m_renderer, &r);
     }
 
-    void mapRect(skScalar x0, skScalar y0, skScalar w, skScalar h, int x, int y, int max) const
+    void mapRect(skScalar       x0,
+                 skScalar       y0,
+                 const skScalar w,
+                 const skScalar h,
+                 const int      x,
+                 const int      y,
+                 const int      max) const
     {
-        int idx = x * max + y;
+        const int idx = x * max + y;
         if (idx > (int)m_textures.size())
             return;
 
@@ -324,15 +327,14 @@ public:
         if (!tex)
             return;
 
-        skScalar x1 = x0 + w, y1 = y0 + h;
-        x0 = viewX(x0), x1 = viewX(x1);
-        y0 = viewY(y0), y1 = viewY(y1);
-
+        skScalar x1 = x0 + w, y1    = y0 + h;
+        x0          = viewX(x0), x1 = viewX(x1);
+        y0          = viewY(y0), y1 = viewY(y1);
         skScalar u0, v0, u1, v1;
         u0 = 0, u1 = m_mapCell;
         v0 = 0, v1 = m_mapCell;
 
-        const SDL_Rect srct = {(int)u0, (int)v0, (int)(u1), (int)(v1)};
+        const SDL_Rect srct = {(int)u0, (int)v0, (int)u1, (int)v1};
         const SDL_Rect dest = {(int)x0, (int)y0, (int)(x1 - x0), (int)(y1 - y0)};
 
         skPixel p(LineColor);
@@ -455,7 +457,7 @@ public:
 
     void fillBackDrop()
     {
-        skScalar xMin, xMax, yMin, yMax, iter, step, vStp, vMin, vMax;
+        skScalar xMin, xMax, yMin, yMax, val, step, vStp, vMin, vMax;
 
         xMin = 0;
         yMin = 0;
@@ -464,27 +466,37 @@ public:
 
         bool doGrid = skEqT(m_zoom, 1, .5);
 
-        iter   = (doGrid ? m_mapCell : m_mapCellSq) / m_zoom;
+        val    = (doGrid ? m_mapCell : m_mapCellSq) / m_zoom;
         doGrid = true;
 
-        SDL_Rect subrect = {
+        SDL_Rect subRect = {
             (int)m_displayRect.x,
             (int)m_displayRect.y,
             (int)m_displayRect.width,
             (int)m_displayRect.height,
         };
-        SDL_RenderSetViewport(m_renderer, &subrect);
+        SDL_RenderSetViewport(m_renderer, &subRect);
 
-        int max = (int)skSqrt((skScalar)m_textures.size());
+        const int max = (int)skSqrt((skScalar)m_textures.size());
         for (int x = 0; x < max; ++x)
+        {
             for (int y = 0; y < max; ++y)
-                mapRect(x * m_mapCellSq, y * m_mapCellSq, m_mapCellSq, m_mapCellSq, x, y, max);
+            {
+                mapRect(skScalar(x) * m_mapCellSq,
+                        skScalar(y) * m_mapCellSq,
+                        m_mapCellSq,
+                        m_mapCellSq,
+                        x,
+                        y,
+                        max);
+            }
+        }
 
         setColor(BackgroundGraph2);
 
         if (doGrid && m_showGrid)
         {
-            step = yMin - skFmod((yMin - offsY()), iter);
+            step = yMin - skFmod(yMin - offsY(), val);
             while (step < yMax)
             {
                 vMin = xMin;
@@ -492,10 +504,10 @@ public:
                 vStp = step;
 
                 lineTo(vMin, vStp, vMax, vStp);
-                step += iter;
+                step += val;
             }
 
-            step = xMin - skFmod(xMin - offsX(), iter);
+            step = xMin - skFmod(xMin - offsX(), val);
             while (step < xMax)
             {
                 vMin = yMin;
@@ -503,20 +515,21 @@ public:
                 vStp = step;
 
                 lineTo(vStp, vMin, vStp, vMax);
-                step += iter;
+                step += val;
             }
         }
 
-        subrect = {
+        subRect = {
             (int)0,
             (int)0,
             (int)m_size.x,
             (int)m_size.y,
         };
-        SDL_RenderSetViewport(m_renderer, &subrect);
+        SDL_RenderSetViewport(m_renderer, &subRect);
 
         m_font->setPointScale(12);
-        m_font->draw(m_renderer, iter, 20, 30, Text);
+        const int iv = (int)val;
+        m_font->draw(m_renderer, iv, 20, 30, Text);
 
         setColor(skPalette::Grey05);
         strokeScreenRect(m_displayRect);
@@ -639,7 +652,7 @@ void FimgApplication::clear()
     m_images.clear();
 }
 
-void FimgApplication::run(SKint32 w, SKint32 h)
+void FimgApplication::run(const SKint32 w, const SKint32 h)
 {
     PrivateApp app(this);
     app.run(w, h);

@@ -72,7 +72,7 @@ void Font_calculateLimits(FT_Face        face,
         if (FT_Load_Char(face, i, FT_LOAD_RENDER))
             continue;
 
-        FT_GlyphSlot slot = face->glyph;
+        const FT_GlyphSlot slot = face->glyph;
         if (!slot)
             continue;
 
@@ -281,23 +281,25 @@ void Font::draw(SDL_Renderer*  renderer,
 }
 
 void Font::draw(SDL_Renderer*  renderer,
-                skScalar       val,
+                const skScalar val,
                 skScalar       x,
                 skScalar       y,
                 const skColor& col) const
 {
     char buf[33];
-    const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", (float)val);
+
+    const double v   = double(val);
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", v);
     draw(renderer, buf, x, y, col, len);
 }
 
 void Font::draw(SDL_Renderer*  renderer,
-                SKint32        val,
+                const SKint32  val,
                 skScalar       x,
                 skScalar       y,
                 const skColor& col) const
 {
-    char buf[33];
+    char         buf[33];
     const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
     draw(renderer, buf, x, y, col, len);
 }

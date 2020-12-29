@@ -23,7 +23,6 @@
 #include "Utils/skFileStream.h"
 #include "Utils/skHexPrint.h"
 #include "Utils/skLogger.h"
-#include "Utils/skMemoryUtils.h"
 #include "Utils/skPlatformHeaders.h"
 #include "Utils/skString.h"
 #include "fimgApp.h"
@@ -125,7 +124,7 @@ public:
         m_addressRange[1] = SK_NPOS32;
     }
 
-    ~Application()
+    virtual ~Application()
     {
         skImage::finalize();
     }
@@ -143,7 +142,6 @@ public:
         }
 
         m_max = skClamp<SKint32>(psr.getValueInt(FI_MAX, 0, 16), 16, 256);
-
         if (psr.isPresent(FI_GRAPH))
         {
             m_window = true;
@@ -179,22 +177,13 @@ public:
         return 0;
     }
 
-    int print()
-    {
-        buildImage();
-        run(m_width, m_height);
-        return 0;
-    }
-
     void buildImage()
     {
         SKuint8 buffer[1025];
 
-        SKsize n;
-        SKsize a, r;
-        n = m_stream.size();
-        a = skClamp<SKsize>(m_addressRange[0], 0, n);
-        r = skClamp<SKsize>(m_addressRange[1], 0, n);
+        const SKsize n = m_stream.size();
+        const SKsize a = skClamp<SKsize>(m_addressRange[0], 0, n);
+        SKsize       r = skClamp<SKsize>(m_addressRange[1], 0, n);
 
         if (m_addressRange[0] != SK_NPOS32)
             m_stream.seek(a, SEEK_SET);
@@ -205,19 +194,19 @@ public:
         skImage* working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
         m_images.push_back(working);
 
-        SKsize br, tr = 0, i, j = 0, offs = 0, yOffs = 0;
+        SKsize tr = 0;
         while (!m_stream.eof() && tr < r)
         {
-            br = m_stream.read(buffer, skMin<SKsize>(1024, r));
+            const SKsize br = m_stream.read(buffer, skMin<SKsize>(1024, r));
             if (br != SK_NPOS32 && br > 0)
             {
                 buffer[br] = 0;
 
                 if (br > 3)
                 {
-                    for (i = 0; i < br; ++i)
+                    for (SKsize i = 0; i < br; ++i)
                     {
-                        const auto ch = (SKubyte)buffer[i];
+                        const auto ch = static_cast<SKubyte>(buffer[i]);
 
                         skPixel color(0x00000000);
                         color.set(skPixel(ch, ch, ch, 128));
@@ -227,19 +216,24 @@ public:
                             x = 0;
                             if (y++ % m_max == m_max - 1)
                             {
-                                y = 0;
-
+                                y       = 0;
                                 working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
                                 m_images.push_back(working);
                             }
                         }
-
-                        working->setPixel(x, y, color);
+                        working->setPixel(x, (m_max-1)-y, color);
                     }
                 }
             }
             tr += br;
         }
+    }
+
+    int print()
+    {
+        buildImage();
+        run(m_width, m_height);
+        return 0;
     }
 };
 

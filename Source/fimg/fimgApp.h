@@ -22,26 +22,17 @@
 #ifndef _freqApp_h_
 #define _freqApp_h_
 
-#include "Utils/skString.h"
-#include "Utils/skArray.h"
 #include "Image/skImage.h"
-
-
+#include "Utils/skArray.h"
 
 class FimgApplication
 {
 public:
-
     typedef skArray<skImage*> Images;
 
-
-
-
 protected:
-
-
-    Images m_images;
-    SKuint64 m_max;
+    Images   m_images;
+    SKuint32 m_max;
 
     friend class PrivateApp;
 
@@ -57,7 +48,6 @@ public:
     {
         clear();
     }
-
 
     void run(SKint32 w, SKint32 h);
 };
