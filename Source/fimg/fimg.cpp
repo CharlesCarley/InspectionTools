@@ -221,7 +221,7 @@ public:
                                 m_images.push_back(working);
                             }
                         }
-                        working->setPixel(x, (m_max-1)-y, color);
+                        working->setPixel(x, (m_max - 1) - y, color);
                     }
                 }
             }

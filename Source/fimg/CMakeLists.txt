@@ -6,13 +6,15 @@ set(Target_SRC
     fimgApp.h
     fimgPixelMap.cpp
     fimgPixelMap.h
-    ../freq/freqFont.cpp
-    ../freq/freqFont.h
+    ../common/freqFont.cpp
+    ../common/freqFont.h
+    ../common/drawUtils.cpp
+    ../common/drawUtils.h
 )
 set(Target_INC ${Utils_INCLUDE} 
                 ${Math_INCLUDE} 
                 ${SDL_INCLUDE}
-                ../freq)
+                ../common)
 
 set(Target_LNK  Utils 
                 Math 

@@ -21,10 +21,10 @@
 #include <cstdio>
 #include "Image/skPalette.h"
 #include "Math/skColor.h"
-#include "Math/skRectangle.h"
-#include "Math/skVector2.h"
+#include "Math/skScreenTransform.h"
 #include "Utils/skLogger.h"
 #include "Utils/skPlatformHeaders.h"
+#include "drawUtils.h"
 #include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
@@ -46,27 +46,20 @@ class PrivateApp
 private:
     typedef skArray<SDL_Texture*> Images;
 
-    Images           m_textures;
-    SDL_Window*      m_window;
-    SDL_Renderer*    m_renderer;
-    Font*            m_font;
-    FimgApplication* m_parent;
-    bool             m_quit;
-    bool             m_redraw;
-    bool             m_showGrid;
-    bool             m_leftIsDown;
-    bool             m_ctrlDown;
-    skVector2        m_size;
-    skVector2        m_extent;
-    skVector2        m_displayOffs;
-    skRectangle      m_displayRect;
-    skScalar         m_zoom;
-    skScalar         m_zoomMin;
-    skScalar         m_scale;
-    skVector2        m_origin;
-    skVector2        m_view;
-    skScalar         m_mapCell;
-    skScalar         m_mapCellSq;
+    Images            m_textures;
+    SDL_Window*       m_window;
+    SDL_Renderer*     m_renderer;
+    Font*             m_font;
+    FimgApplication*  m_parent;
+    bool              m_quit;
+    bool              m_redraw;
+    bool              m_showGrid;
+    bool              m_leftIsDown;
+    bool              m_ctrlDown;
+    skVector2         m_size;
+    skScalar          m_mapCell;
+    skScalar          m_mapCellSq;
+    skScreenTransform m_xForm;
 
 public:
     PrivateApp(FimgApplication* parent) :
@@ -79,10 +72,6 @@ public:
         m_showGrid(false),
         m_leftIsDown(false),
         m_ctrlDown(false),
-        m_displayRect(0, 0, 0, 0),
-        m_zoom(32),
-        m_zoomMin(1),
-        m_scale(0),
         m_mapCell(1),
         m_mapCellSq(1)
     {
@@ -107,208 +96,30 @@ public:
 
     void setInitial()
     {
-        m_scale              = 1;
-        m_displayRect.width  = skMin<skScalar>(m_size.x, m_size.y) - 40;
-        m_displayRect.height = m_displayRect.width;
+        skRectangle vp;
+        vp.width  = skMin<skScalar>(m_size.x, m_size.y) - 40;
+        vp.height = vp.width;
+        vp.x      = m_size.x - (vp.width + 20);
+        vp.y      = 20;
 
-        m_displayRect.x = m_size.x - (m_displayRect.width + 20);
-        m_displayRect.y = 20;
+        skMath::forceAlign(vp.width, (int)m_mapCell);
+        skMath::forceAlign(vp.height, (int)m_mapCell);
 
-        m_origin.x = 0;
-        m_origin.y = 0;
-        m_extent.x = m_displayRect.width;
-        m_extent.y = m_displayRect.width;
+        skScalar sval = (skScalar)m_textures.size();
+        skMath::forceAlign(sval, (int)m_mapCell);
+        sval = skSqrt(sval);
 
-        const int mod = (int)m_mapCell;
-        if ((int)m_extent.x % mod != 0)
-            m_extent.x += (skScalar)(mod - (int)m_extent.x % mod);
-        if ((int)m_extent.y % mod != 0)
-            m_extent.y += (skScalar)(mod - (int)m_extent.y % mod);
+        const skScalar lim = m_mapCellSq * sval;
 
-        m_view.x = m_extent.x / 2;
-        m_view.y = m_extent.y / 2;
+        m_xForm.setInitialOrigin(0, 0);
+        m_xForm.setScaleLimit(1, lim);
+        m_xForm.setViewport(vp);
 
-        m_zoomMin = m_zoom = m_extent.x / m_displayRect.width;
+        m_xForm.reset();
     }
-
-    void clampScale(const skScalar fac, bool negate)
-    {
-        m_scale += fac * (negate ? skScalar(-1) : skScalar(1));
-        if (m_scale < skScalar(-1.1))
-            m_scale = 1.0;
-
-        if (m_scale > skSqu(m_mapCellSq) / 8)
-            m_scale = skSqu(m_mapCellSq) / 8;
-    }
-
-    void setScale(const skScalar factor, bool negate)
-    {
-        if (skEq(factor, 0))
-            return;
-
-        clampScale(factor, negate);
-
-        if (m_scale > 1)
-        {
-            m_extent = m_displayRect.getSize() + m_scale;
-            m_zoom   = m_extent.x / m_displayRect.width;
-
-            if (m_zoom <= m_zoomMin)
-                m_zoom = m_zoomMin;
-        }
-    }
-
-    skVector2 getOrigin() const
-    {
-        return m_origin;
-    }
-
-    skVector2 getExtent() const
-    {
-        return m_extent;
-    }
-
-    skVector2 getOffset() const
-    {
-        return skVector2(offsX(), offsY());
-    }
-
-    void setOffset(const skVector2& offs)
-    {
-        m_origin = offs;
-    }
-
-    skScalar offsX() const
-    {
-        return (-m_view.x + m_origin.x + m_extent.x / 2) / m_zoom;
-    }
-
-    skScalar offsY() const
-    {
-        return (-m_view.y + m_origin.y + m_extent.y / 2) / m_zoom;
-    }
-
-    skScalar screenX(const skScalar& vx) const
-    {
-        return (vx - offsX()) * m_zoom;
-    }
-
-    skScalar screenY(const skScalar& vy) const
-    {
-        return (vy - offsY()) * m_zoom;
-    }
-
-    skVector2 view(const skVector2& sc) const
-    {
-        return skVector2(viewX(sc.x), viewY(sc.y));
-    }
-
-    skVector2 screen(const skVector2& vp) const
-    {
-        return skVector2(screenX(vp.x), screenY(vp.y));
-    }
-
-    skScalar viewX(const skScalar& sx) const
-    {
-        return sx / m_zoom + offsX();
-    }
-
-    skScalar viewY(const skScalar& sy) const
-    {
-        return sy / m_zoom + offsY();
-    }
-
-    void screenToView(const skScalar& sx, const skScalar& sy, skScalar& vx, skScalar& vy) const
-    {
-        vx = viewX(sx);
-        vy = viewY(sy);
-    }
-
-    void viewToScreen(const skScalar& vx, const skScalar& vy, skScalar& sx, skScalar& sy) const
-    {
-        sx = screenX(vx);
-        sy = screenY(vy);
-    }
-
-    void viewToScreen(const skVector2& vc, skVector2& sc) const
-    {
-        viewToScreen(vc.x, vc.y, sc.x, sc.y);
-    }
-
-    void screenToView(const skVector2& sc, skVector2& vc) const
-    {
-        screenToView(sc.x, sc.y, vc.x, vc.y);
-    }
-
     void setColor(const skPixel& color) const
     {
         SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, color.a);
-    }
-
-    void setColor(const skColor& color) const
-    {
-        SKuint8 r, g, b, a;
-        color.asInt8(r, g, b, a);
-        SDL_SetRenderDrawColor(m_renderer, r, g, b, a);
-    }
-
-    void clear(const skColor& color) const
-    {
-        SKuint8 r, g, b, a;
-        color.asInt8(r, g, b, a);
-
-        SDL_SetRenderDrawColor(m_renderer, r, g, b, a);
-        SDL_RenderClear(m_renderer);
-    }
-
-    void strokeRect(const skRectangle& rect) const
-    {
-        skScalar x0, y0, x1, y1;
-        rect.getBounds(x0, y0, x1, y1);
-
-        x0 = viewX(x0), x1 = viewX(x1);
-        y0 = viewY(y0), y1 = viewY(y1);
-
-        const SDL_Rect r = {
-            (int)x0,
-            (int)y0,
-            (int)(x1 - x0),
-            (int)(y1 - y0),
-        };
-        SDL_RenderDrawRect(m_renderer, &r);
-    }
-
-    void fillRect(const skRectangle& rect) const
-    {
-        skScalar x0, y0, x1, y1;
-        rect.getBounds(x0, y0, x1, y1);
-
-        x0 = viewX(x0), x1 = viewX(x1);
-        y0 = viewY(y0), y1 = viewY(y1);
-
-        const SDL_Rect r = {
-            (int)x0,
-            (int)y0,
-            (int)(x1 - x0),
-            (int)(y1 - y0),
-        };
-        SDL_RenderFillRect(m_renderer, &r);
-    }
-
-    void fillPoint(const skVector2& pt) const
-    {
-        skScalar x0 = pt.x, y0 = pt.y, x1 = pt.x, y1 = pt.y;
-
-        x0 = viewX(x0 - 10), x1 = viewX(x1 + 10);
-        y0 = viewY(y0 - 10), y1 = viewY(y1 + 10);
-
-        const SDL_Rect r = {
-            (int)x0,
-            (int)y0,
-            (int)((x1 - x0) * m_zoom),
-            (int)((y1 - y0) * m_zoom),
-        };
-        SDL_RenderFillRect(m_renderer, &r);
     }
 
     void mapRect(skScalar       x0,
@@ -327,9 +138,9 @@ public:
         if (!tex)
             return;
 
-        skScalar x1 = x0 + w, y1    = y0 + h;
-        x0          = viewX(x0), x1 = viewX(x1);
-        y0          = viewY(y0), y1 = viewY(y1);
+        skScalar x1 = x0 + w, y1 = y0 + h;
+        x0 = m_xForm.getViewX(x0), x1 = m_xForm.getViewX(x1);
+        y0 = m_xForm.getViewY(y0), y1 = m_xForm.getViewY(y1);
         skScalar u0, v0, u1, v1;
         u0 = 0, u1 = m_mapCell;
         v0 = 0, v1 = m_mapCell;
@@ -340,42 +151,6 @@ public:
         skPixel p(LineColor);
         SDL_SetTextureColorMod(tex, p.r, p.g, p.b);
         SDL_RenderCopy(m_renderer, tex, &srct, &dest);
-    }
-
-    void fillScreenRect(const skRectangle& rect) const
-    {
-        const SDL_Rect r = {
-            (int)rect.x,
-            (int)rect.y,
-            (int)rect.width,
-            (int)rect.height,
-        };
-        SDL_RenderFillRect(m_renderer, &r);
-    }
-
-    void strokeScreenRect(const skRectangle& rect) const
-    {
-        const SDL_Rect r = {
-            (int)rect.x,
-            (int)rect.y,
-            (int)rect.width,
-            (int)rect.height,
-        };
-        SDL_RenderDrawRect(m_renderer, &r);
-    }
-
-    void lineTo(const skScalar& x0, const skScalar& y0, const skScalar& x1, const skScalar& y1) const
-    {
-        SDL_RenderDrawLine(m_renderer, (int)x0, (int)y0, (int)x1, (int)y1);
-    }
-
-    void lineToView(const skScalar& x0, const skScalar& y0, const skScalar& x1, const skScalar& y1) const
-    {
-        SDL_RenderDrawLine(m_renderer,
-                           (int)viewX(x0),
-                           (int)viewY(y0),
-                           (int)viewX(x1),
-                           (int)viewY(y1));
     }
 
     void processEvents()
@@ -397,7 +172,7 @@ public:
                 }
                 if (evt.key.keysym.sym == SDLK_c)
                 {
-                    setInitial();
+                    m_xForm.reset();
                     m_redraw = true;
                 }
                 break;
@@ -410,7 +185,7 @@ public:
 
                 break;
             case SDL_MOUSEWHEEL:
-                setScale(127 * m_zoom, evt.wheel.y > 0);
+                m_xForm.zoom(127, evt.wheel.y > 0);
                 m_redraw = true;
                 break;
             case SDL_MOUSEMOTION:
@@ -420,12 +195,11 @@ public:
                     {
                         skVector2 dv(skScalar(12 * evt.motion.xrel),
                                      skScalar(12 * evt.motion.yrel));
-                        setScale(dv.length() * m_zoom, dv.y < 0);
+                        m_xForm.zoom(dv.length(), dv.y < 0);
                     }
                     else
                     {
-                        m_origin.x += skScalar(evt.motion.xrel) * m_zoom;
-                        m_origin.y += skScalar(evt.motion.yrel) * m_zoom;
+                        m_xForm.pan((skScalar)evt.motion.xrel, (skScalar)evt.motion.yrel);
                     }
                     m_redraw = true;
                 }
@@ -461,21 +235,15 @@ public:
 
         xMin = 0;
         yMin = 0;
-        xMax = m_displayRect.width;
-        yMax = m_displayRect.height;
+        xMax = m_xForm.viewportWidth();
+        yMax = m_xForm.viewportHeight();
 
-        bool doGrid = skEqT(m_zoom, 1, .5);
+        bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
 
-        val    = (doGrid ? m_mapCell : m_mapCellSq) / m_zoom;
+        val    = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
         doGrid = true;
 
-        SDL_Rect subRect = {
-            (int)m_displayRect.x,
-            (int)m_displayRect.y,
-            (int)m_displayRect.width,
-            (int)m_displayRect.height,
-        };
-        SDL_RenderSetViewport(m_renderer, &subRect);
+        DrawUtils::SetViewport(m_renderer, m_xForm);
 
         const int max = (int)skSqrt((skScalar)m_textures.size());
         for (int x = 0; x < max; ++x)
@@ -492,52 +260,46 @@ public:
             }
         }
 
-        setColor(BackgroundGraph2);
+        DrawUtils::SetColor(m_renderer, BackgroundGraph2);
 
         if (doGrid && m_showGrid)
         {
-            step = yMin - skFmod(yMin - offsY(), val);
+            step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
             while (step < yMax)
             {
                 vMin = xMin;
                 vMax = xMax;
                 vStp = step;
 
-                lineTo(vMin, vStp, vMax, vStp);
+                DrawUtils::ScreenLineTo(m_renderer, vMin, vStp, vMax, vStp);
                 step += val;
             }
 
-            step = xMin - skFmod(xMin - offsX(), val);
+            step = xMin - skFmod(xMin - m_xForm.xOffs(), val);
             while (step < xMax)
             {
                 vMin = yMin;
                 vMax = yMax;
                 vStp = step;
 
-                lineTo(vStp, vMin, vStp, vMax);
+                DrawUtils::ScreenLineTo(m_renderer, vStp, vMin, vStp, vMax);
                 step += val;
             }
         }
 
-        subRect = {
-            (int)0,
-            (int)0,
-            (int)m_size.x,
-            (int)m_size.y,
-        };
-        SDL_RenderSetViewport(m_renderer, &subRect);
+        DrawUtils::SetViewport(m_renderer, m_size);
 
         m_font->setPointScale(12);
         const int iv = (int)val;
         m_font->draw(m_renderer, iv, 20, 30, Text);
 
         setColor(skPalette::Grey05);
-        strokeScreenRect(m_displayRect);
+        DrawUtils::StrokeScreenRect(m_renderer, m_xForm.getViewport());
     }
 
     void render()
     {
-        clear(Background2);
+        DrawUtils::Clear(m_renderer, Background2);
         fillBackDrop();
         SDL_RenderPresent(m_renderer);
     }
@@ -620,13 +382,12 @@ public:
         m_mapCell   = skScalar(m_parent->m_max);
         m_mapCellSq = m_mapCell * m_mapCell;
 
-        setInitial();
-
         m_font = new Font();
         m_font->setPointScale(10);
         m_font->loadInternal(m_renderer, 55, 72);
 
         buildMaps();
+        setInitial();
 
         m_showGrid = true;
 

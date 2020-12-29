@@ -25,7 +25,7 @@
 class FreqApplication
 {
 private:
-    SKuint64 *m_freqBuffer;
+    SKuint64* m_freqBuffer;
     SKuint64  m_max;
 
     friend class PrivateApp;
@@ -37,7 +37,7 @@ public:
     {
     }
 
-    void setBuffer(SKuint64 *buffer, SKuint64 max)
+    void setBuffer(SKuint64* buffer, SKuint64 max)
     {
         m_freqBuffer = buffer;
         m_max        = max;

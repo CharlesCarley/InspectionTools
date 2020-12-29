@@ -6,8 +6,10 @@ if (InspectionTools_BUILD_SDL)
     set(Target_SRC_EX
         freqApp.cpp
         freqApp.h
-        freqFont.cpp
-        freqFont.h
+        ../common/freqFont.cpp
+        ../common/freqFont.h
+        ../common/drawUtils.cpp
+        ../common/drawUtils.h
     )
     set(Target_INC ${Utils_INCLUDE} 
                    ${Math_INCLUDE} 
@@ -25,7 +27,7 @@ add_executable(${TargetName}
                ${Target_SRC}
                ${Target_SRC_EX})
 
-include_directories(${Target_INC})
+include_directories(${Target_INC} ../common)
 target_link_libraries(${TargetName} ${Target_LNK})
 
 copy_install_target(${TargetName})

@@ -21,8 +21,10 @@
 #include <cstdio>
 #include "Math/skColor.h"
 #include "Math/skRectangle.h"
+#include "Math/skScreenTransform.h"
 #include "Math/skVector2.h"
 #include "Utils/skLogger.h"
+#include "drawUtils.h"
 #include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
@@ -40,23 +42,21 @@ const skScalar StepScale        = skScalar(0.125);
 class PrivateApp
 {
 private:
-    SDL_Window*      m_window;
-    SDL_Renderer*    m_renderer;
-    Font*            m_font;
-    FreqApplication* m_parent;
-    bool             m_quit;
-    bool             m_redraw;
-    bool             m_showGrid;
-    bool             m_leftIsDown;
-    bool             m_ctrlDown;
-    skRectangle      m_displayRect;
-    skScalar         m_zoom;
-    skScalar         m_scale;
-    skVector2        m_pan;
-    skVector2        m_origin;
-    skScalar         m_xAxisScale;
-    skScalar         m_yAxisScale;
-    skVector2        m_displayOffs;
+    SDL_Window*       m_window;
+    SDL_Renderer*     m_renderer;
+    Font*             m_font;
+    FreqApplication*  m_parent;
+    bool              m_quit;
+    bool              m_redraw;
+    bool              m_showGrid;
+    bool              m_leftIsDown;
+    bool              m_ctrlDown;
+    skVector2         m_winSize;
+    skRectangle       m_viewport;
+    skScalar          m_xAxisScale;
+    skScalar          m_yAxisScale;
+    skVector2         m_displayOffs;
+    skScreenTransform m_xForm;
 
 public:
     PrivateApp(FreqApplication* parent) :
@@ -69,9 +69,6 @@ public:
         m_showGrid(false),
         m_leftIsDown(false),
         m_ctrlDown(false),
-        m_displayRect(0, 0, 0, 0),
-        m_zoom(32),
-        m_scale(0),
         m_xAxisScale(1),
         m_yAxisScale(1),
         m_displayOffs(0, 0)
@@ -91,214 +88,120 @@ public:
         SDL_Quit();
     }
 
-    void getOrigin(skScalar& x, skScalar& y)
+    void fillGrid() const
     {
-        x = m_displayRect.x + m_displayOffs.x;
-        y = m_displayRect.y + m_displayRect.height - m_displayOffs.y;
-    }
+        skScalar xMin, xMax, yMin, yMax, val, step, vStp, vMin, vMax;
+        xMin = 6;
+        yMin = 6;
+        xMax = m_winSize.x - 12;
+        yMax = m_winSize.y - 12;
 
-    void setScale(const skScalar fac)
-    {
-        m_scale += fac;
+        DrawUtils::SetColor(m_renderer, BackgroundGraph2);
 
-        if (m_scale > m_displayRect.width * 5)
-            m_scale = m_displayRect.width * 5;
+        val = 128.f / m_xForm.getZoom();
 
-        if (m_scale < -1)
-            m_scale = -1;
-    }
-
-    void setColor(const skColor& color) const
-    {
-        SKuint8 r, g, b, a;
-        color.asInt8(r, g, b, a);
-        SDL_SetRenderDrawColor(m_renderer, r, g, b, a);
-    }
-
-    void clear(const skColor& color) const
-    {
-        SKuint8 r, g, b, a;
-        color.asInt8(r, g, b, a);
-
-        SDL_SetRenderDrawColor(m_renderer, r, g, b, a);
-        SDL_RenderClear(m_renderer);
-    }
-
-    void strokeRect(const skRectangle& rect, const skColor& color) const
-    {
-        setColor(color);
-        const SDL_Rect r = {
-            (int)rect.x,
-            (int)rect.y,
-            (int)rect.width,
-            (int)rect.height,
-        };
-        SDL_RenderDrawRect(m_renderer, &r);
-    }
-
-    void fillRect(const skRectangle& rect) const
-    {
-        const SDL_Rect r = {
-            (int)rect.x,
-            (int)rect.y,
-            (int)rect.width,
-            (int)rect.height,
-        };
-        SDL_RenderFillRect(m_renderer, &r);
-    }
-
-    void fillRect2(const skRectangle& rect, const skColor& color) const
-    {
-        skRectangle tr(rect);
-        tr.move(m_origin.x, m_origin.y);
-        tr.move(m_pan.x, m_pan.y);
-        tr.width /= m_zoom;
-        tr.height /= m_zoom;
-
-        skScalar x1, y1, x2, y2;
-        tr.getBounds(x1, y1, x2, y2);
-
-        y1 -= tr.height;
-        y2 -= tr.height;
-
-        setColor(color);
-        const SDL_Rect r = {
-            (int)x1,
-            (int)y1,
-            (int)(x2 - x1),
-            (int)(y2 - y1),
-        };
-        SDL_RenderFillRect(m_renderer, &r);
-    }
-
-    void displayLine(const skVector2& f, const skVector2& t) const
-    {
-        setColor(LineColor);
-
-        skVector2       fr(f.x, -f.y), to(t.x, -t.y);
-        const skVector2 offs(m_origin + m_pan);
-
-        if (m_zoom > 0)
+        step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
+        while (step < yMax)
         {
-            fr /= m_zoom;
-            to /= m_zoom;
+            vMin = xMin;
+            vMax = xMax;
+            vStp = step;
+
+            DrawUtils::ScreenLineTo(m_renderer,
+                                    vMin,
+                                    vStp,
+                                    vMax,
+                                    vStp);
+            step += val;
         }
 
-        fr += offs;
-        to += offs;
-
-        if (m_displayRect.contains(fr) || m_displayRect.contains(to))
+        step = xMin - skFmod(xMin - m_xForm.xOffs(), val);
+        while (step < xMax)
         {
-            SDL_RenderDrawLineF(m_renderer,
-                                fr.x,
-                                fr.y,
-                                to.x,
-                                to.y);
+            vMin = yMin;
+            vMax = yMax;
+            vStp = step;
+            DrawUtils::ScreenLineTo(m_renderer,
+                                    vStp,
+                                    vMin,
+                                    vStp,
+                                    vMax);
+            step += val;
         }
     }
 
-    void fillGrid(const skScalar& xMin,
-                  const skScalar& xMax,
-                  const skScalar& yMin,
-                  const skScalar& yMax,
-                  const skColor&  color) const
+    void fillLabels() const
     {
-        setColor(color);
+        const skRectangle left(0, 0, m_displayOffs.x, m_winSize.y);
+        const skRectangle bottom(m_displayOffs.x,
+                                 m_winSize.y - m_displayOffs.y,
+                                 m_winSize.x - m_displayOffs.x,
+                                 m_displayOffs.y);
 
-        const skScalar sxt = ((xMax - xMin) / m_zoom) * StepScale;
-        const skScalar syt = ((yMax - yMin) / m_zoom) * StepScale;
+        DrawUtils::SetColor(m_renderer, Background2);
+        DrawUtils::FillScreenRect(m_renderer,
+                                  left);
 
-        skScalar       stp;
-        const skScalar xOffset = m_origin.x + m_pan.x;
-        const skScalar yOffset = m_origin.y + m_pan.y;
-
-        stp = xMin + skFmod(xMin + xOffset, sxt);
-        while (stp < xMax)
-        {
-            if (m_displayRect.containsX(stp))
-                SDL_RenderDrawLineF(m_renderer, stp, yMin, stp, yMax);
-            stp += sxt;
-        }
-
-        stp = yMin + skFmod(yMin + yOffset, syt);
-        while (stp < yMax)
-        {
-            if (m_displayRect.containsY(stp))
-                SDL_RenderDrawLineF(m_renderer, xMin, stp, xMax, stp);
-            stp += syt;
-        }
-
-        if (m_displayRect.containsX(xOffset))
-        {
-            setColor(BackgroundGraph2);
-            SDL_RenderDrawLineF(m_renderer,
-                                xOffset,
-                                yMin,
-                                xOffset,
-                                yMax);
-        }
-        if (m_displayRect.containsY(yOffset))
-        {
-            setColor(BackgroundGraph2);
-            SDL_RenderDrawLineF(m_renderer,
-                                xMin,
-                                yOffset,
-                                xMax,
-                                yOffset);
-        }
-    }
-
-    void fillLabels(const skScalar& xMin,
-                    const skScalar& xMax,
-                    const skScalar& yMin,
-                    const skScalar& yMax,
-                    const skColor&  color) const
-    {
-        setColor(color);
-
-        const skScalar sxt = (xMax - xMin) * StepScale;
-        const skScalar syt = (yMax - yMin) * StepScale;
-
-        const skScalar xOffset = m_origin.x + m_pan.x;
-        const skScalar yOffset = m_origin.y + m_pan.y;
-
-        const skScalar xFac = 1.f / (m_xAxisScale / m_zoom);
-        const skScalar yFac = 1.f / (m_yAxisScale / m_zoom);
-
-        fillRect(skRectangle(0, 0, m_displayOffs.x, yMax));
-        fillRect(skRectangle(m_displayOffs.x,
-                             m_displayRect.getBottom() - m_displayOffs.y,
-                             xMax,
-                             m_displayOffs.y));
-
+        DrawUtils::FillScreenRect(m_renderer,
+                                  bottom);
         m_font->setPointScale(12);
 
-        skScalar stp;
-        stp = xMin + skFmod(xMin + xOffset, sxt);
-        while (stp < xMax)
-        {
-            if (stp > m_displayOffs.x)
-            {
-                m_font->draw(m_renderer,
-                             (int)((stp - xOffset) * xFac),
-                             stp - 3,
-                             yMax - 16,
-                             Text);
-            }
+        DrawUtils::SetColor(m_renderer, Clear);
+        skScalar xMin, xMax, yMin, yMax, val, step, vStp, xFac, yFac;
 
-            stp += sxt;
+        left.getBounds(xMin, yMin, xMax, yMax);
+        // leave the space at the bottom
+        yMax -= m_displayOffs.y;
+        xMin += 6;
+        xMax -= 6;
+
+        val = 128.f / m_xForm.getZoom();
+
+        yFac = 1.f / m_yAxisScale;
+        xFac = 1.f / m_xAxisScale;
+
+        step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
+        while (step < yMax)
+        {
+            vStp = step;
+
+            // Get the position on the window
+            skScalar value = -m_xForm.getScreenY(vStp) + m_displayOffs.y;
+
+            // convert to a unit of freq [0 - range]
+            value *= yFac;
+
+            m_font->draw(m_renderer,
+                         (int)value,
+                         3.f,
+                         vStp - 12,
+                         Text);
+            step += val;
         }
 
-        stp = yMin + skFmod(yMin + yOffset, syt);
-        while (stp < m_displayRect.getBottom() - m_displayOffs.y)
-        {
-            m_font->draw(m_renderer,
-                         -(int)((stp - yOffset) * yFac),
-                         2,
-                         stp - 6,
-                         Text);
+        bottom.getBounds(xMin, yMin, xMax, yMax);
+        yMin += 2;
+        yMax -= 2;
 
-            stp += syt;
+        step = xMin - skFmod(xMin - (m_displayOffs.x + m_xForm.xOffs()), val);
+        while (step < xMax)
+        {
+            vStp = step;
+            if (vStp > xMin)
+            {
+                // Position in the window minus the offset from the left
+                skScalar value = m_xForm.getScreenX(vStp) - m_displayOffs.x;
+
+                // convert to a unit of x [0 - 255]
+                value *= xFac;
+
+                m_font->draw(m_renderer,
+                             (int)value,
+                             vStp - 3,
+                             m_winSize.y - m_displayOffs.y + 5,
+                             Text);
+            }
+            step += val;
         }
     }
 
@@ -316,9 +219,7 @@ public:
                     m_quit = true;
                 if (evt.key.keysym.sym == SDLK_c)
                 {
-                    m_pan = skVector2::Zero;
-                    getOrigin(m_origin.x, m_origin.y);
-                    m_scale  = 1;
+                    m_xForm.reset();
                     m_redraw = true;
                 }
                 break;
@@ -333,21 +234,22 @@ public:
                 }
                 break;
             case SDL_MOUSEWHEEL:
-                if (evt.wheel.y > 0)
-                    setScale(-120);
-                else
-                    setScale(120);
+                m_xForm.zoom(120, evt.wheel.y > 0);
                 m_redraw = true;
                 break;
             case SDL_MOUSEMOTION:
                 if (m_leftIsDown)
                 {
                     if (m_ctrlDown)
-                        setScale(skScalar(evt.motion.yrel) * 12);
+                    {
+                        skVector2 dv(skScalar(12 * evt.motion.xrel),
+                                     skScalar(12 * evt.motion.yrel));
+                        m_xForm.zoom(dv.length(), dv.y < 0);
+                    }
                     else
                     {
-                        m_pan.x += evt.motion.xrel;
-                        m_pan.y += evt.motion.yrel;
+                        m_xForm.pan((skScalar)evt.motion.xrel,
+                                    (skScalar)evt.motion.yrel);
                     }
 
                     m_redraw = true;
@@ -355,11 +257,17 @@ public:
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 if (evt.button.button == SDL_BUTTON_LEFT)
+                {
                     m_leftIsDown = true;
+                    SDL_CaptureMouse(SDL_TRUE);
+                }
                 break;
             case SDL_MOUSEBUTTONUP:
                 if (evt.button.button == SDL_BUTTON_LEFT)
+                {
                     m_leftIsDown = false;
+                    SDL_CaptureMouse(SDL_FALSE);
+                }
                 break;
             case SDL_QUIT:
                 m_quit = true;
@@ -370,29 +278,24 @@ public:
         }
     }
 
-    void render()
+    void render() const
     {
-        clear(Clear);
+        DrawUtils::Clear(m_renderer, Background);
 
-        skRectangle scaledRect(m_displayRect);
-        scaledRect.expand(m_scale, m_scale);
+        const skRectangle& vp = m_xForm.getViewport();
 
-        setColor(Background);
-        fillRect(m_displayRect);
-
-        m_zoom = scaledRect.width / m_displayRect.width;
-
-        skScalar xMin, xMax, yMin, yMax;
-        m_displayRect.getBounds(xMin, yMin, xMax, yMax);
+        SDL_Rect rVp = {
+            (int)vp.x,
+            (int)vp.y,
+            (int)vp.width,
+            (int)vp.height,
+        };
+        SDL_RenderSetViewport(m_renderer, &rVp);
 
         if (m_showGrid)
-        {
-            fillGrid(xMin,
-                     xMax,
-                     yMin,
-                     yMax,
-                     BackgroundGraph);
-        }
+            fillGrid();
+
+        DrawUtils::SetColor(m_renderer, LineColor);
 
         skVector2 f, t;
         skScalar  x = 0;
@@ -402,25 +305,33 @@ public:
             if (i == 0)
             {
                 f.x = x;
-                f.y = y;
+                f.y = -y;
             }
             else
             {
                 t.x = x;
-                t.y = y;
+                t.y = -y;
 
-                displayLine(f, t);
+                DrawUtils::LineTo(m_renderer,
+                                  m_xForm,
+                                  f.x,
+                                  f.y,
+                                  t.x,
+                                  t.y);
                 f = t;
             }
             x += m_xAxisScale;
         }
 
-        fillLabels(xMin,
-                   xMax,
-                   yMin,
-                   yMax,
-                   Background2);
+        rVp = {
+            0,
+            0,
+            (int)m_winSize.x,
+            (int)m_winSize.y,
+        };
+        SDL_RenderSetViewport(m_renderer, &rVp);
 
+        fillLabels();
         SDL_RenderPresent(m_renderer);
     }
 
@@ -455,18 +366,23 @@ public:
         m_displayOffs.x = 50;
         m_displayOffs.y = 20;
 
-        m_displayRect.width  = skScalar(w);
-        m_displayRect.height = skScalar(h);
+        m_winSize.x = skScalar(w);
+        m_winSize.y = skScalar(h);
 
         m_font = new Font();
         m_font->loadInternal(m_renderer, 32, 72);
 
-        m_yAxisScale = m_displayRect.height / skScalar(m_parent->m_max);
-        m_xAxisScale = m_displayRect.width / skScalar(256.0);
+        m_viewport = skRectangle(m_displayOffs.x, 0, m_winSize.x, m_winSize.y - m_displayOffs.y);
+
+        m_xForm.setScaleLimit(1, 2000);
+        m_xForm.setViewport(m_viewport);
+        m_xForm.setInitialOrigin(0, m_viewport.getBottom());
+        m_xForm.reset();
+
+        m_yAxisScale = (m_viewport.height - m_displayOffs.y) / skScalar(m_parent->m_max);
+        m_xAxisScale = (m_viewport.width - m_displayOffs.x) / skScalar(256.0);
 
         m_showGrid = true;
-        getOrigin(m_origin.x, m_origin.y);
-
         while (!m_quit)
         {
             processEvents();

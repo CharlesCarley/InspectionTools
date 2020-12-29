@@ -134,7 +134,7 @@ public:
     {
     }
 
-    int parse(int argc, char **argv)
+    int parse(int argc, char** argv)
     {
         Parser psr;
         if (psr.parse(argc, argv, Switches, FP_MAX) < 0)
@@ -173,7 +173,7 @@ public:
         m_includeZero = psr.isPresent(FP_NO_DROP_ZERO);
 
         using StringArray = Parser::StringArray;
-        StringArray &args = psr.getArgList();
+        StringArray& args = psr.getArgList();
         if (args.empty())
         {
             skLogf(LD_INFO, "No file supplied\n");
@@ -386,7 +386,7 @@ public:
     }
 };
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     skLogger log;
     log.setFlags(LF_STDOUT);
