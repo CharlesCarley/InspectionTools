@@ -28,6 +28,7 @@
 #include "freqFont.h"
 #define SDL_MAIN_HANDLED
 #include "SDL.h"
+#include "fimgPixelMap.h"
 
 const skColor Clear            = skColor(0x555555FF);
 const skColor Background       = skColor(0x282828FF);
@@ -44,7 +45,7 @@ const skColor Text             = skColor(0x808080FF);
 class PrivateApp
 {
 private:
-    typedef skArray<SDL_Texture*> Images;
+    typedef skArray<PixelMap*> Images;
 
     Images            m_textures;
     SDL_Window*       m_window;
@@ -83,7 +84,7 @@ public:
 
         Images::Iterator it = m_textures.iterator();
         while (it.hasMoreElements())
-            SDL_DestroyTexture(it.getNext());
+            delete it.getNext();
 
         if (m_renderer)
             SDL_DestroyRenderer(m_renderer);
@@ -97,17 +98,17 @@ public:
     void setInitial()
     {
         skRectangle vp;
-        vp.width  = skMin<skScalar>(m_size.x, m_size.y) - 40;
+        vp.width  = skMin<skScalar>(m_size.x, m_size.y);
         vp.height = vp.width;
-        vp.x      = m_size.x - (vp.width + 20);
-        vp.y      = 20;
 
-        skMath::forceAlign(vp.width, (int)m_mapCell);
-        skMath::forceAlign(vp.height, (int)m_mapCell);
+        vp.width -= 32;
+        vp.height -= 32;
+
+        vp.x = m_size.x - (vp.width + 16);
+        vp.y = m_size.y - (vp.width + 16);
 
         skScalar sval = (skScalar)m_textures.size();
-        skMath::forceAlign(sval, (int)m_mapCell);
-        sval = skSqrt(sval);
+        sval          = skSqrt(sval);
 
         const skScalar lim = m_mapCellSq * sval;
 
@@ -117,40 +118,10 @@ public:
 
         m_xForm.reset();
     }
+
     void setColor(const skPixel& color) const
     {
         SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, color.a);
-    }
-
-    void mapRect(skScalar       x0,
-                 skScalar       y0,
-                 const skScalar w,
-                 const skScalar h,
-                 const int      x,
-                 const int      y,
-                 const int      max) const
-    {
-        const int idx = x * max + y;
-        if (idx > (int)m_textures.size())
-            return;
-
-        SDL_Texture* tex = m_textures.at(idx);
-        if (!tex)
-            return;
-
-        skScalar x1 = x0 + w, y1 = y0 + h;
-        x0 = m_xForm.getViewX(x0), x1 = m_xForm.getViewX(x1);
-        y0 = m_xForm.getViewY(y0), y1 = m_xForm.getViewY(y1);
-        skScalar u0, v0, u1, v1;
-        u0 = 0, u1 = m_mapCell;
-        v0 = 0, v1 = m_mapCell;
-
-        const SDL_Rect srct = {(int)u0, (int)v0, (int)u1, (int)v1};
-        const SDL_Rect dest = {(int)x0, (int)y0, (int)(x1 - x0), (int)(y1 - y0)};
-
-        skPixel p(LineColor);
-        SDL_SetTextureColorMod(tex, p.r, p.g, p.b);
-        SDL_RenderCopy(m_renderer, tex, &srct, &dest);
     }
 
     void processEvents()
@@ -229,121 +200,138 @@ public:
         }
     }
 
-    void fillBackDrop()
+    void displayGrid()
     {
         skScalar xMin, xMax, yMin, yMax, val, step, vStp, vMin, vMax;
+        DrawUtils::SetColor(m_renderer, BackgroundGraph2);
+
+        bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
+        val         = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
 
         xMin = 0;
         yMin = 0;
         xMax = m_xForm.viewportWidth();
         yMax = m_xForm.viewportHeight();
 
-        bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
-
-        val    = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
-        doGrid = true;
-
-        DrawUtils::SetViewport(m_renderer, m_xForm);
-
-        const int max = (int)skSqrt((skScalar)m_textures.size());
-        for (int x = 0; x < max; ++x)
+        step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
+        while (step < yMax)
         {
-            for (int y = 0; y < max; ++y)
-            {
-                mapRect(skScalar(x) * m_mapCellSq,
-                        skScalar(y) * m_mapCellSq,
-                        m_mapCellSq,
-                        m_mapCellSq,
-                        x,
-                        y,
-                        max);
-            }
+            vMin = xMin;
+            vMax = xMax;
+            vStp = step;
+
+            DrawUtils::ScreenLineTo(m_renderer, vMin, vStp, vMax, vStp);
+            step += val;
         }
 
-        DrawUtils::SetColor(m_renderer, BackgroundGraph2);
-
-        if (doGrid && m_showGrid)
+        step = xMin - skFmod(xMin - m_xForm.xOffs(), val);
+        while (step < xMax)
         {
-            step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
-            while (step < yMax)
-            {
-                vMin = xMin;
-                vMax = xMax;
-                vStp = step;
+            vMin = yMin;
+            vMax = yMax;
+            vStp = step;
 
-                DrawUtils::ScreenLineTo(m_renderer, vMin, vStp, vMax, vStp);
-                step += val;
-            }
-
-            step = xMin - skFmod(xMin - m_xForm.xOffs(), val);
-            while (step < xMax)
-            {
-                vMin = yMin;
-                vMax = yMax;
-                vStp = step;
-
-                DrawUtils::ScreenLineTo(m_renderer, vStp, vMin, vStp, vMax);
-                step += val;
-            }
+            DrawUtils::ScreenLineTo(m_renderer, vStp, vMin, vStp, vMax);
+            step += val;
         }
-
-        DrawUtils::SetViewport(m_renderer, m_size);
-
-        m_font->setPointScale(12);
-        const int iv = (int)val;
-        m_font->draw(m_renderer, iv, 20, 30, Text);
-
-        setColor(skPalette::Grey05);
-        DrawUtils::StrokeScreenRect(m_renderer, m_xForm.getViewport());
     }
 
     void render()
     {
         DrawUtils::Clear(m_renderer, Background2);
-        fillBackDrop();
-        SDL_RenderPresent(m_renderer);
-    }
 
-    void convertTextureMap(skImage* ima)
-    {
-        if (ima->getSizeInBytes() <= 0)
-            return;
+        DrawUtils::SetViewport(m_renderer, m_xForm);
 
-        SDL_Texture* tex = SDL_CreateTexture(m_renderer,
-                                             SDL_PIXELFORMAT_ABGR8888,
-                                             SDL_TEXTUREACCESS_STREAMING,
-                                             ima->getWidth(),
-                                             ima->getHeight());
-        if (tex)
+        skScalar x1, y1, x2, y2;
+
+        Images::Iterator it = m_textures.iterator();
+        while (it.hasMoreElements())
         {
-            void* pixels;
-            int   pitch;
+            PixelMap* map = it.getNext();
 
-            SDL_LockTexture(tex, nullptr, &pixels, &pitch);
-            if (pixels)
-            {
-                skMemcpy(pixels, ima->getBytes(), ima->getSizeInBytes());
-                SDL_UnlockTexture(tex);
+            map->getPosition().getBounds(x1, y1, x2, y2);
 
-                SDL_SetTextureScaleMode(tex, SDL_ScaleModeNearest);
-                SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+            x1 = m_xForm.getViewX(x1), x2 = m_xForm.getViewX(x2);
+            y1 = m_xForm.getViewY(y1), y2 = m_xForm.getViewY(y2);
 
-                m_textures.push_back(tex);
-            }
+            const SDL_Rect dest = {
+                (int)x1,
+                (int)y1,
+                (int)(x2 - x1),
+                (int)(y2 - y1),
+            };
+
+            SDL_RenderCopy(m_renderer,
+                           map->getTexture(),
+                           nullptr,
+                           &dest);
         }
+
+        if (m_showGrid)
+            displayGrid();
+
+        DrawUtils::SetViewport(m_renderer, m_size);
+        setColor(skPalette::Grey05);
+        DrawUtils::StrokeScreenRect(m_renderer, m_xForm.getViewport());
+
+        SDL_RenderPresent(m_renderer);
     }
 
     void buildMaps()
     {
         m_textures.reserve(m_parent->m_images.size());
 
-        FimgApplication::Images::Iterator it = m_parent->m_images.iterator();
-        while (it.hasMoreElements())
+        const int modStep = (int)skSqrt((skScalar)m_parent->m_images.size() / 2);
+
+        int         x = 0, y = 0;
+        skRectangle workingRect(0, 0, m_mapCellSq, m_mapCellSq);
+
+        for (SKuint32 i = 0; i < m_parent->m_images.size(); ++i)
         {
-            skImage* ima = it.getNext();
-            convertTextureMap(ima);
-            delete ima;
+            skImage* image = m_parent->m_images[i];
+
+            SK_ASSERT(image->getWidth() == m_parent->m_max);
+            SK_ASSERT(image->getHeight() == m_parent->m_max);
+
+            SDL_Texture* tex = SDL_CreateTexture(m_renderer,
+                                                 SDL_PIXELFORMAT_ABGR8888,
+                                                 SDL_TEXTUREACCESS_STREAMING,
+                                                 m_parent->m_max,
+                                                 m_parent->m_max);
+
+            if (tex != nullptr)
+            {
+                void* pixels;
+                int   pitch;
+                SDL_LockTexture(tex, nullptr, &pixels, &pitch);
+                if (pixels)
+                {
+                    skMemcpy(pixels, image->getBytes(), image->getSizeInBytes());
+                    SDL_UnlockTexture(tex);
+
+                    const skPixel p(LineColor);
+                    SDL_SetTextureColorMod(tex, p.r, p.g, p.b);
+                    SDL_SetTextureScaleMode(tex, SDL_ScaleModeNearest);
+                    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+                    workingRect.x = skScalar(x) * m_mapCellSq;
+                    workingRect.y = skScalar(y) * m_mapCellSq;
+
+                    PixelMap* pixelMap = new PixelMap(tex, workingRect);
+                    m_textures.push_back(pixelMap);
+                }
+            }
+
+            if (y++ % modStep == modStep - 1)
+            {
+                y = 0;
+                x++;
+            }
+
+            ++i;
+            delete image;
         }
+
         m_parent->m_images.clear();
     }
 
@@ -376,21 +364,19 @@ public:
             return;
         }
 
-        m_size.x = skScalar(w);
-        m_size.y = skScalar(h);
-
+        m_size.x    = skScalar(w);
+        m_size.y    = skScalar(h);
         m_mapCell   = skScalar(m_parent->m_max);
         m_mapCellSq = m_mapCell * m_mapCell;
 
         m_font = new Font();
         m_font->setPointScale(10);
-        m_font->loadInternal(m_renderer, 55, 72);
+        m_font->loadInternal(m_renderer, 48, 96);
 
         buildMaps();
         setInitial();
 
         m_showGrid = true;
-
         while (!m_quit)
         {
             processEvents();

@@ -22,4 +22,30 @@
 #ifndef _fimgPixelMap_h_
 #define _fimgPixelMap_h_
 
-#endif//_fimgPixelMap_h_
+#include "Math/skRectangle.h"
+
+
+struct SDL_Texture;
+
+class PixelMap
+{
+private:
+    SDL_Texture*      m_texture;
+    const skRectangle m_gridPos;
+    
+public:
+    PixelMap(SDL_Texture* texture, const skRectangle &gridPos);
+    ~PixelMap();
+
+    SK_INLINE SDL_Texture* getTexture() const
+    {
+        return m_texture;
+    }
+
+    SK_INLINE const skRectangle& getPosition() const
+    {
+        return m_gridPos;
+    }
+};
+
+#endif  //_fimgPixelMap_h_

@@ -20,3 +20,16 @@
 -------------------------------------------------------------------------------
 */
 #include "fimgPixelMap.h"
+#include "SDL.h"
+
+PixelMap::PixelMap(SDL_Texture* texture, const skRectangle& gridPos) :
+    m_texture(texture),
+    m_gridPos(gridPos)
+{
+}
+
+PixelMap::~PixelMap()
+{
+    if (m_texture)
+        SDL_DestroyTexture(m_texture);
+}

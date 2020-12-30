@@ -34,12 +34,7 @@ enum SwitchIds
 {
     FI_RANGE = 0,
     FI_MAX,
-    FI_OFFSET,
-    FI_FLIP,
-#ifdef USING_SDL
     FI_GRAPH,
-#endif
-    FI_OUTPUT,
     FI_MAX_ENUM
 };
 
@@ -58,28 +53,12 @@ const Switch Switches[FI_MAX_ENUM] = {
     {
         FI_MAX,
         'm',
-        "maxX",
-        "Specify pixel range that determines a new row.",
+        "max",
+        "Specify the power of two pixel range that determines a new row.\n"
+        "  - Arguments: [32,64,128,256]\n",
         true,
         1,
     },
-    {
-        FI_OFFSET,
-        0,
-        "offset",
-        "Specify pixel range that determines a new row.",
-        true,
-        1,
-    },
-    {
-        FI_FLIP,
-        'f',
-        nullptr,
-        "Flip the x and y coordinates.",
-        true,
-        0,
-    },
-#ifdef USING_SDL
     {
         FI_GRAPH,
         'w',
@@ -90,17 +69,7 @@ const Switch Switches[FI_MAX_ENUM] = {
         "    - Height [100 - 4320]\n",
         true,
         2,
-    },
-#endif
-    {
-        FI_OUTPUT,
-        'o',
-        "output",
-        "Specify the output file.",
-        true,
-        1,
-    },
-};
+    }};
 
 class Application : public FimgApplication
 {
@@ -110,7 +79,6 @@ private:
     SKint32      m_width;
     SKint32      m_height;
     bool         m_window;
-    skString     m_output;
 
 public:
     Application() :
@@ -141,7 +109,12 @@ public:
             m_addressRange[1] = psr.getValueInt(FI_RANGE, 1, SK_NPOS32, 10);
         }
 
-        m_max = skClamp<SKint32>(psr.getValueInt(FI_MAX, 0, 16), 16, 256);
+        SKint32 mVal = psr.getValueInt(FI_MAX, 0, 32);
+        if (!SK_HASHTABLE_IS_POW2(mVal))
+            mVal = skMath::pow2(mVal);
+
+        m_max = skClamp<SKint32>(mVal, 32, 256);
+
         if (psr.isPresent(FI_GRAPH))
         {
             m_window = true;
@@ -150,13 +123,6 @@ public:
 
             m_width  = skClamp(m_width, 200, 7680);
             m_height = skClamp(m_height, 100, 4320);
-        }
-
-        m_output = psr.getValueString(FI_OUTPUT, 0);
-        if (m_output.empty() && !m_window)
-        {
-            skLogf(LD_ERROR, "No output file supplied\n");
-            return 1;
         }
 
         using StringArray = Parser::StringArray;
@@ -210,7 +176,6 @@ public:
 
                         skPixel color(0x00000000);
                         color.set(skPixel(ch, ch, ch, 128));
-
                         if (x++ % m_max == m_max - 1)
                         {
                             x = 0;
@@ -221,7 +186,7 @@ public:
                                 m_images.push_back(working);
                             }
                         }
-                        working->setPixel(x, (m_max - 1) - y, color);
+                        working->setPixel(x, m_max - 1 - y, color);
                     }
                 }
             }
@@ -236,6 +201,7 @@ public:
         return 0;
     }
 };
+
 
 int main(int argc, char** argv)
 {
