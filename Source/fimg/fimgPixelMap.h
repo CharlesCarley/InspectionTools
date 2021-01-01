@@ -24,7 +24,6 @@
 
 #include "Math/skRectangle.h"
 
-
 struct SDL_Texture;
 
 class PixelMap
@@ -32,9 +31,9 @@ class PixelMap
 private:
     SDL_Texture*      m_texture;
     const skRectangle m_gridPos;
-    
+
 public:
-    PixelMap(SDL_Texture* texture, const skRectangle &gridPos);
+    PixelMap(SDL_Texture* texture, const skRectangle& gridPos);
     ~PixelMap();
 
     SK_INLINE SDL_Texture* getTexture() const

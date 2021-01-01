@@ -50,8 +50,7 @@ private:
     SKint32      m_yMax;
     skScalar     m_pointScale;
 
-    void setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color) const;
-
+    void        setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color) const;
     const Char& getBoundsFor(char ch) const;
 
 public:
@@ -81,9 +80,16 @@ public:
               skScalar       y,
               const skColor& col) const;
 
-    inline void setPointScale(skScalar scale)
+    void draw(SDL_Renderer*  renderer,
+              SKuint32       val,
+              skScalar       x,
+              skScalar       y,
+              const skColor& col) const;
+
+    void setPointScale(skScalar scale)
     {
-        m_pointScale = scale / skScalar(m_size);
+        if (m_size > 0)
+            m_pointScale = scale / skScalar(m_size);
     }
 };
 

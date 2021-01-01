@@ -15,10 +15,10 @@ if (InspectionTools_BUILD_SDL)
 
     set(FreeType_ExternalTarget TRUE)
     set(FreeType_TargetFolders TRUE)
-    set(FreeType_TargetName    FreeType)
+    set(FreeType_TargetName    Freetype)
     set(FreeType_TargetGroup   Extern)
 
-    subdirs(FreeType)
+    subdirs(Freetype)
 
     set(FreeImage_ExternalTarget TRUE)
     set(FreeImage_TargetFolders  TRUE)

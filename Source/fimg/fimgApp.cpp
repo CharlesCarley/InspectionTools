@@ -30,17 +30,18 @@
 #include "SDL.h"
 #include "fimgPixelMap.h"
 
-const skColor Clear            = skColor(0x555555FF);
-const skColor Background       = skColor(0x282828FF);
-const skColor BackgroundGraph  = skColor(0x333333FF);
-const skColor BackgroundGraph2 = skColor(0x252525FF);
-const skColor BackgroundGraph3 = skColor(0x545454FF);
-const skColor LineColor        = skColor(0x5EC4F6FF);
-const skColor Background2      = skColor(0x181818FF);
-const skColor White            = skColor(0xFFFFFFFF);
-const skColor Black            = skColor(0x000000FF);
-const skColor Red              = skColor(0xFF0000FF);
-const skColor Text             = skColor(0x808080FF);
+const skColor  Clear            = skColor(0x555555FF);
+const skColor  Background       = skColor(0x282828FF);
+const skColor  BackgroundGraph  = skColor(0x333333FF);
+const skColor  BackgroundGraph2 = skColor(0x252525FF);
+const skColor  BackgroundGraph3 = skColor(0x545454FF);
+const skColor  LineColor        = skColor(0x5EC4F6FF);
+const skColor  Background2      = skColor(0x181818FF);
+const skColor  White            = skColor(0xFFFFFFFF);
+const skColor  Black            = skColor(0x000000FF);
+const skColor  Red              = skColor(0xFF0000FF);
+const skColor  Text             = skColor(0xD5D5D5FF);
+const SKuint32 WindowFlags      = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
 
 class PrivateApp
 {
@@ -56,11 +57,16 @@ private:
     bool              m_redraw;
     bool              m_showGrid;
     bool              m_leftIsDown;
+    bool              m_rightIsDown;
     bool              m_ctrlDown;
     skVector2         m_size;
+    skVector2         m_clickPos;
+    skVector2         m_mouseCo;
     skScalar          m_mapCell;
     skScalar          m_mapCellSq;
     skScreenTransform m_xForm;
+    int               m_maxCellX;
+    int               m_maxCellY;
 
 public:
     PrivateApp(FimgApplication* parent) :
@@ -72,9 +78,12 @@ public:
         m_redraw(true),
         m_showGrid(false),
         m_leftIsDown(false),
+        m_rightIsDown(false),
         m_ctrlDown(false),
         m_mapCell(1),
-        m_mapCellSq(1)
+        m_mapCellSq(1),
+        m_maxCellX(0),
+        m_maxCellY(0)
     {
     }
 
@@ -98,14 +107,12 @@ public:
     void setInitial()
     {
         skRectangle vp;
-        vp.width  = skMin<skScalar>(m_size.x, m_size.y);
-        vp.height = vp.width;
 
-        vp.width -= 32;
-        vp.height -= 32;
+        vp.width  = m_size.x;
+        vp.height = m_size.y;
 
-        vp.x = m_size.x - (vp.width + 16);
-        vp.y = m_size.y - (vp.width + 16);
+        skMath::forceAlign(vp.width, 16);
+        skMath::forceAlign(vp.height, 16);
 
         skScalar sval = (skScalar)m_textures.size();
         sval          = skSqrt(sval);
@@ -115,13 +122,40 @@ public:
         m_xForm.setInitialOrigin(0, 0);
         m_xForm.setScaleLimit(1, lim);
         m_xForm.setViewport(vp);
-
         m_xForm.reset();
     }
 
     void setColor(const skPixel& color) const
     {
-        SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, color.a);
+        SDL_SetRenderDrawColor(m_renderer,
+                               color.r,
+                               color.g,
+                               color.b,
+                               color.a);
+    }
+
+    void handleKeyDown(const SDL_Event& evt)
+    {
+        switch (evt.key.keysym.sym)
+        {
+        case SDLK_LCTRL:
+            m_ctrlDown = true;
+            break;
+        case SDLK_ESCAPE:
+            m_quit = true;
+            break;
+        case SDLK_c:
+        case SDLK_KP_PERIOD:
+            m_xForm.reset();
+            m_redraw = true;
+            break;
+        case SDLK_g:
+            m_showGrid = !m_showGrid;
+            m_redraw   = true;
+            break;
+        default:
+            break;
+        }
     }
 
     void processEvents()
@@ -132,20 +166,7 @@ public:
             switch (evt.type)
             {
             case SDL_KEYDOWN:
-                if (evt.key.keysym.sym == SDLK_LCTRL)
-                    m_ctrlDown = true;
-                if (evt.key.keysym.sym == SDLK_ESCAPE)
-                    m_quit = true;
-                if (evt.key.keysym.sym == SDLK_g)
-                {
-                    m_showGrid = !m_showGrid;
-                    m_redraw   = true;
-                }
-                if (evt.key.keysym.sym == SDLK_c)
-                {
-                    m_xForm.reset();
-                    m_redraw = true;
-                }
+                handleKeyDown(evt);
                 break;
             case SDL_KEYUP:
                 if (evt.key.keysym.sym == SDLK_LCTRL)
@@ -153,13 +174,13 @@ public:
                     m_ctrlDown = false;
                     m_redraw   = true;
                 }
-
                 break;
             case SDL_MOUSEWHEEL:
                 m_xForm.zoom(127, evt.wheel.y > 0);
                 m_redraw = true;
                 break;
             case SDL_MOUSEMOTION:
+            {
                 if (m_leftIsDown)
                 {
                     if (m_ctrlDown)
@@ -169,19 +190,27 @@ public:
                         m_xForm.zoom(dv.length(), dv.y < 0);
                     }
                     else
-                    {
                         m_xForm.pan((skScalar)evt.motion.xrel, (skScalar)evt.motion.yrel);
-                    }
                     m_redraw = true;
                 }
-                break;
+                m_redraw    = true;
+                m_mouseCo.x = skScalar(evt.motion.x);
+                m_mouseCo.y = skScalar(evt.motion.y);
+            }
+            break;
             case SDL_MOUSEBUTTONDOWN:
                 if (evt.button.button == SDL_BUTTON_LEFT)
                 {
                     SDL_CaptureMouse(SDL_TRUE);
-
                     m_leftIsDown = true;
                     m_redraw     = true;
+                }
+                else if (evt.button.button == SDL_BUTTON_RIGHT)
+                {
+                    m_clickPos.x  = skScalar(evt.button.x);
+                    m_clickPos.y  = skScalar(evt.button.y);
+                    m_rightIsDown = true;
+                    m_redraw      = true;
                 }
                 break;
             case SDL_MOUSEBUTTONUP:
@@ -189,6 +218,11 @@ public:
                 {
                     SDL_CaptureMouse(SDL_FALSE);
                     m_leftIsDown = false;
+                }
+                else if (evt.button.button == SDL_BUTTON_RIGHT)
+                {
+                    m_rightIsDown = false;
+                    m_redraw      = true;
                 }
                 break;
             case SDL_QUIT:
@@ -205,8 +239,9 @@ public:
         skScalar xMin, xMax, yMin, yMax, val, step, vStp, vMin, vMax;
         DrawUtils::SetColor(m_renderer, BackgroundGraph2);
 
-        bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
-        val         = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
+        const bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
+
+        val = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
 
         xMin = 0;
         yMin = 0;
@@ -236,10 +271,52 @@ public:
         }
     }
 
+    void splitMappedMouseCo(skScalar& mapCo,
+                            int&      arrayIndex,
+                            int&      mapIndex,
+                            const int maxArrayIndex) const
+    {
+        skScalar wp, fp;
+        mapCo /= m_mapCellSq / m_xForm.getZoom();
+
+        if (mapCo >= 0)
+        {
+            skSplitScalar(mapCo, wp, fp);
+            arrayIndex = (int)wp;
+            if (arrayIndex < maxArrayIndex + 1)
+                mapIndex = (int)skFloor(fp * m_mapCell);
+            else
+                arrayIndex = -1;
+        }
+        else
+            arrayIndex = -1;
+    }
+
+    void getMouseCoMappedToCellXY(int& xArray, int& yArray, int& xMap, int& yMap) const
+    {
+        // Grab the mouse coordinate relative to the viewport
+        // then take off the current offset and divide it as
+        // a ratio of the cell to find its major index.
+        // Then take the fractional part (its ratio of one cell)
+        // to get its index into the map itself.
+        // Be sure to test the index  (xArray * m_maxCellX + yArray)
+
+        skScalar mapCo;
+        mapCo = m_mouseCo.x - m_xForm.viewportLeft();
+        mapCo -= m_xForm.xOffs();
+        splitMappedMouseCo(mapCo, xArray, xMap, m_maxCellX);
+
+        mapCo = m_mouseCo.y - m_xForm.viewportTop();
+        mapCo -= m_xForm.yOffs();
+        splitMappedMouseCo(mapCo, yArray, yMap, m_maxCellY);
+
+        if (xArray == -1 || yArray == -1)
+            xArray = xMap = yArray = yMap = -1;
+    }
+
     void render()
     {
         DrawUtils::Clear(m_renderer, Background2);
-
         DrawUtils::SetViewport(m_renderer, m_xForm);
 
         skScalar x1, y1, x2, y2;
@@ -270,10 +347,41 @@ public:
         if (m_showGrid)
             displayGrid();
 
+        int xArray, yArray;
+        int xMap, yMap;
+        getMouseCoMappedToCellXY(xArray, yArray, xMap, yMap);
+
+        m_font->draw(m_renderer, "X", 20, 20, Text);
+        m_font->draw(m_renderer, xArray, 35, 20, Text);
+        m_font->draw(m_renderer, "Y", 20, 40, Text);
+        m_font->draw(m_renderer, yArray, 35, 40, Text);
+        m_font->draw(m_renderer, "u", 20, 60, Text);
+        m_font->draw(m_renderer, xMap, 35, 60, Text);
+        m_font->draw(m_renderer, "v", 20, 80, Text);
+        m_font->draw(m_renderer, yMap, 35, 80, Text);
+
+        char buf[32] = {};
+
+        if (xArray >= 0)
+        {
+            SKuint32 i1 = (SKuint32)yArray * (SKuint32)m_maxCellX + (SKuint32)xArray;
+
+            if (i1 < m_textures.size())
+            {
+                i1 = (SKuint32)xArray * (SKuint32)m_maxCellX + (SKuint32)yArray;
+
+                SKuint32 address = (SKuint32)(yMap * SKuint32(m_mapCell)) + (SKuint32)(xMap + 1);
+                address += SKuint32(m_mapCellSq) * i1;
+
+                skSprintf(buf, 31, "0x%08x", address);
+                m_font->draw(m_renderer, buf, 20, 120, skColor(0xFF0000FF));
+            }
+        }
+
         DrawUtils::SetViewport(m_renderer, m_size);
+
         setColor(skPalette::Grey05);
         DrawUtils::StrokeScreenRect(m_renderer, m_xForm.getViewport());
-
         SDL_RenderPresent(m_renderer);
     }
 
@@ -281,9 +389,12 @@ public:
     {
         m_textures.reserve(m_parent->m_images.size());
 
-        const int modStep = (int)skSqrt((skScalar)m_parent->m_images.size() / 2);
+        const int modStep = (int)skSqrt((skScalar)m_parent->m_images.size());
 
-        int         x = 0, y = 0;
+        m_maxCellY = modStep - 1;
+        m_maxCellX = 0;
+        int y = 0, x = 0;
+
         skRectangle workingRect(0, 0, m_mapCellSq, m_mapCellSq);
 
         for (SKuint32 i = 0; i < m_parent->m_images.size(); ++i)
@@ -298,7 +409,6 @@ public:
                                                  SDL_TEXTUREACCESS_STREAMING,
                                                  m_parent->m_max,
                                                  m_parent->m_max);
-
             if (tex != nullptr)
             {
                 void* pixels;
@@ -314,7 +424,7 @@ public:
                     SDL_SetTextureScaleMode(tex, SDL_ScaleModeNearest);
                     SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 
-                    workingRect.x = skScalar(x) * m_mapCellSq;
+                    workingRect.x = skScalar(m_maxCellX) * m_mapCellSq;
                     workingRect.y = skScalar(y) * m_mapCellSq;
 
                     PixelMap* pixelMap = new PixelMap(tex, workingRect);
@@ -322,13 +432,12 @@ public:
                 }
             }
 
-            if (y++ % modStep == modStep - 1)
+            if (++y % modStep == 0)
             {
                 y = 0;
-                x++;
+                m_maxCellX++;
             }
 
-            ++i;
             delete image;
         }
 
@@ -357,7 +466,7 @@ public:
 
         m_renderer = SDL_CreateRenderer(m_window,
                                         -1,
-                                        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+                                        WindowFlags);
         if (!m_renderer)
         {
             skLogf(LD_ERROR, "Failed to create renderer:\n\t%s\n", SDL_GetError());
@@ -370,8 +479,8 @@ public:
         m_mapCellSq = m_mapCell * m_mapCell;
 
         m_font = new Font();
-        m_font->setPointScale(10);
-        m_font->loadInternal(m_renderer, 48, 96);
+        m_font->loadInternal(m_renderer, 48, 72);
+        m_font->setPointScale(12);
 
         buildMaps();
         setInitial();
