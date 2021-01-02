@@ -118,8 +118,8 @@ public:
         if (psr.isPresent(FI_GRAPH))
         {
             m_window = true;
-            m_width  = psr.getValueInt(FI_GRAPH, 0, 640);
-            m_height = psr.getValueInt(FI_GRAPH, 1, 480);
+            m_width  = psr.getValueInt(FI_GRAPH, 0, 800);
+            m_height = psr.getValueInt(FI_GRAPH, 1, 600);
 
             m_width  = skClamp(m_width, 200, 7680);
             m_height = skClamp(m_height, 100, 4320);
@@ -168,25 +168,21 @@ public:
             {
                 buffer[br] = 0;
 
-                if (br > 3)
+                for (SKsize i = 0; i < br; ++i)
                 {
-                    for (SKsize i = 0; i < br; ++i)
-                    {
-                        const auto ch = static_cast<SKubyte>(buffer[i]);
+                    const auto ch = static_cast<SKubyte>(buffer[i]);
 
-                        skPixel color(0x00000000);
-                        color.set(skPixel(ch, ch, ch, 128));
-                        if (x++ % m_max == m_max - 1)
+                    working->setPixel(x, m_max - 1 - y, skPixel(ch, ch, ch, 128));
+
+                    if (++x % m_max == 0)
+                    {
+                        if (++y % m_max == 0)
                         {
-                            x = 0;
-                            if (y++ % m_max == m_max - 1)
-                            {
-                                y       = 0;
-                                working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
-                                m_images.push_back(working);
-                            }
+                            working = new skImage(m_max, m_max, skPixelFormat::SK_RGBA);
+                            m_images.push_back(working);
+                            y = 0;
                         }
-                        working->setPixel(x, m_max - 1 - y, color);
+                        x = 0;
                     }
                 }
             }

@@ -22,19 +22,24 @@
 #ifndef _fimgPixelMap_h_
 #define _fimgPixelMap_h_
 
+#include "Image/skImage.h"
 #include "Math/skRectangle.h"
 
 struct SDL_Texture;
+struct SDL_Renderer;
 
 class PixelMap
 {
 private:
     SDL_Texture*      m_texture;
     const skRectangle m_gridPos;
+    skImage*          m_image;
 
 public:
-    PixelMap(SDL_Texture* texture, const skRectangle& gridPos);
+    PixelMap(skImage *image, const skRectangle& gridPos);
     ~PixelMap();
+
+    void loadFromImage(SDL_Renderer *renderer, const skPixel &color);
 
     SK_INLINE SDL_Texture* getTexture() const
     {
@@ -45,6 +50,9 @@ public:
     {
         return m_gridPos;
     }
+
+    SKuint8 getByte(SKuint32 x, SKuint32 y) const;
+
 };
 
 #endif  //_fimgPixelMap_h_

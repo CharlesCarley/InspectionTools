@@ -21,15 +21,69 @@
 */
 #include "fimgPixelMap.h"
 #include "SDL.h"
+#include "Utils/skLogger.h"
+#include "Utils/skMemoryUtils.h"
+#include "Utils/skPlatformHeaders.h"
 
-PixelMap::PixelMap(SDL_Texture* texture, const skRectangle& gridPos) :
-    m_texture(texture),
-    m_gridPos(gridPos)
+PixelMap::PixelMap(skImage* image, const skRectangle& gridPos) :
+    m_texture(nullptr),
+    m_gridPos(gridPos),
+    m_image(image)
 {
 }
 
 PixelMap::~PixelMap()
 {
+    delete m_image;
+
     if (m_texture)
         SDL_DestroyTexture(m_texture);
+}
+
+void PixelMap::loadFromImage(SDL_Renderer* renderer, const skPixel& color)
+{
+    if (m_image == nullptr)
+    {
+        skLogd(LD_ERROR, "invalid pixel map image\n");
+        return;
+    }
+
+    if (m_texture)
+    {
+        skLogd(LD_ERROR, "texture has already been loaded.\n");
+        return;
+    }
+
+    m_texture = SDL_CreateTexture(renderer,
+                                  SDL_PIXELFORMAT_ABGR8888,
+                                  SDL_TEXTUREACCESS_STREAMING,
+                                  m_image->getWidth(),
+                                  m_image->getHeight());
+    if (m_texture != nullptr)
+    {
+        void* pixels;
+        int   pitch;
+        SDL_LockTexture(m_texture, nullptr, &pixels, &pitch);
+        if (pixels)
+        {
+            skMemcpy(pixels, m_image->getBytes(), m_image->getSizeInBytes());
+            SDL_UnlockTexture(m_texture);
+
+            SDL_SetTextureColorMod(m_texture, color.r, color.g, color.b);
+            SDL_SetTextureScaleMode(m_texture, SDL_ScaleModeNearest);
+            SDL_SetTextureBlendMode(m_texture, SDL_BLENDMODE_BLEND);
+        }
+    }
+}
+
+SKuint8 PixelMap::getByte(SKuint32 x, SKuint32 y) const
+{
+    SKuint8 rc = 0;
+    if (m_image)
+    {
+        skPixel px;
+        m_image->getPixel(x, m_image->getHeight() - 1 - y, px);
+        rc = px.r;
+    }
+    return rc;
 }

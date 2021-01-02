@@ -144,6 +144,14 @@ public:
         case SDLK_ESCAPE:
             m_quit = true;
             break;
+        case SDLK_KP_MINUS:
+            m_xForm.zoom(120, false);
+            m_redraw = true;
+            break;
+        case SDLK_KP_PLUS:
+            m_xForm.zoom(120, true);
+            m_redraw = true;
+            break;
         case SDLK_c:
         case SDLK_KP_PERIOD:
             m_xForm.reset();
@@ -364,17 +372,28 @@ public:
 
         if (xArray >= 0)
         {
-            SKuint32 i1 = (SKuint32)yArray * (SKuint32)m_maxCellX + (SKuint32)xArray;
+            SKuint32 i1 = (SKuint32)xArray * (SKuint32)m_maxCellX + (SKuint32)yArray;
 
             if (i1 < m_textures.size())
             {
+                const SKubyte b  = m_textures.at(i1)->getByte(xMap, yMap);
+                SKbyte        cc = ' ';
+
+                if (b >= 32 && b < 127)
+                    cc = b;
+
                 i1 = (SKuint32)xArray * (SKuint32)m_maxCellX + (SKuint32)yArray;
 
-                SKuint32 address = (SKuint32)(yMap * SKuint32(m_mapCell)) + (SKuint32)(xMap + 1);
+                SKuint32 address = (SKuint32)(yMap * SKuint32(m_mapCell)) + (SKuint32)xMap;
                 address += SKuint32(m_mapCellSq) * i1;
 
-                skSprintf(buf, 31, "0x%08x", address);
-                m_font->draw(m_renderer, buf, 20, 120, skColor(0xFF0000FF));
+                int len = skSprintf(buf, 31, "0x%08X", address);
+                buf[len] = 0;
+                m_font->draw(m_renderer, buf, 20, 100, Text);
+
+                len = skSprintf(buf, 31, "(0x%02X, '%c', %d)", b, cc, (int)b);
+                buf[len] = 0;
+                m_font->draw(m_renderer, buf, 20, 120, Text);
             }
         }
 
@@ -393,7 +412,7 @@ public:
 
         m_maxCellY = modStep - 1;
         m_maxCellX = 0;
-        int y = 0, x = 0;
+        int y      = 0;
 
         skRectangle workingRect(0, 0, m_mapCellSq, m_mapCellSq);
 
@@ -404,41 +423,20 @@ public:
             SK_ASSERT(image->getWidth() == m_parent->m_max);
             SK_ASSERT(image->getHeight() == m_parent->m_max);
 
-            SDL_Texture* tex = SDL_CreateTexture(m_renderer,
-                                                 SDL_PIXELFORMAT_ABGR8888,
-                                                 SDL_TEXTUREACCESS_STREAMING,
-                                                 m_parent->m_max,
-                                                 m_parent->m_max);
-            if (tex != nullptr)
-            {
-                void* pixels;
-                int   pitch;
-                SDL_LockTexture(tex, nullptr, &pixels, &pitch);
-                if (pixels)
-                {
-                    skMemcpy(pixels, image->getBytes(), image->getSizeInBytes());
-                    SDL_UnlockTexture(tex);
+            workingRect.x = skScalar(m_maxCellX) * m_mapCellSq;
+            workingRect.y = skScalar(y) * m_mapCellSq;
 
-                    const skPixel p(LineColor);
-                    SDL_SetTextureColorMod(tex, p.r, p.g, p.b);
-                    SDL_SetTextureScaleMode(tex, SDL_ScaleModeNearest);
-                    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+            PixelMap* px = new PixelMap(image, workingRect);
 
-                    workingRect.x = skScalar(m_maxCellX) * m_mapCellSq;
-                    workingRect.y = skScalar(y) * m_mapCellSq;
+            px->loadFromImage(m_renderer, skPixel(LineColor.asInt()));
 
-                    PixelMap* pixelMap = new PixelMap(tex, workingRect);
-                    m_textures.push_back(pixelMap);
-                }
-            }
+            m_textures.push_back(px);
 
             if (++y % modStep == 0)
             {
                 y = 0;
                 m_maxCellX++;
             }
-
-            delete image;
         }
 
         m_parent->m_images.clear();
