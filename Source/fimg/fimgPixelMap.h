@@ -36,10 +36,10 @@ private:
     skImage*          m_image;
 
 public:
-    PixelMap(skImage *image, const skRectangle& gridPos);
+    PixelMap(skImage* image, const skRectangle& gridPos);
     ~PixelMap();
 
-    void loadFromImage(SDL_Renderer *renderer, const skPixel &color);
+    void loadFromImage(SDL_Renderer* renderer, const skPixel& color);
 
     SK_INLINE SDL_Texture* getTexture() const
     {
@@ -52,7 +52,6 @@ public:
     }
 
     SKuint8 getByte(SKuint32 x, SKuint32 y) const;
-
 };
 
 #endif  //_fimgPixelMap_h_

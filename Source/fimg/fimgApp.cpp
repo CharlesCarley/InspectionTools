@@ -148,6 +148,22 @@ public:
             m_xForm.zoom(120, false);
             m_redraw = true;
             break;
+        case SDLK_UP:
+            m_xForm.panFixed(0, m_mapCellSq);
+            m_redraw = true;
+            break;
+        case SDLK_DOWN:
+            m_xForm.panFixed(0, -m_mapCellSq);
+            m_redraw = true;
+            break;
+        case SDLK_LEFT:
+            m_xForm.panFixed(m_mapCellSq, 0);
+            m_redraw = true;
+            break;
+        case SDLK_RIGHT:
+            m_xForm.panFixed(-m_mapCellSq, 0);
+            m_redraw = true;
+            break;
         case SDLK_KP_PLUS:
             m_xForm.zoom(120, true);
             m_redraw = true;
@@ -244,11 +260,10 @@ public:
 
     void displayGrid()
     {
-        skScalar xMin, xMax, yMin, yMax, val, step, vStp, vMin, vMax;
+        skScalar xMin, xMax, yMin, yMax, val, vStp;
         DrawUtils::SetColor(m_renderer, BackgroundGraph2);
 
         const bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
-
         val = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
 
         xMin = 0;
@@ -256,26 +271,18 @@ public:
         xMax = m_xForm.viewportWidth();
         yMax = m_xForm.viewportHeight();
 
-        step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
-        while (step < yMax)
+        vStp = yMin - skFmod(yMin - m_xForm.yOffs(), val);
+        while (vStp < yMax)
         {
-            vMin = xMin;
-            vMax = xMax;
-            vStp = step;
-
-            DrawUtils::ScreenLineTo(m_renderer, vMin, vStp, vMax, vStp);
-            step += val;
+            DrawUtils::ScreenLineTo(m_renderer, xMin, vStp, xMax, vStp);
+            vStp += val;
         }
 
-        step = xMin - skFmod(xMin - m_xForm.xOffs(), val);
-        while (step < xMax)
+        vStp = xMin - skFmod(xMin - m_xForm.xOffs(), val);
+        while (vStp < xMax)
         {
-            vMin = yMin;
-            vMax = yMax;
-            vStp = step;
-
-            DrawUtils::ScreenLineTo(m_renderer, vStp, vMin, vStp, vMax);
-            step += val;
+            DrawUtils::ScreenLineTo(m_renderer, vStp, yMin, vStp, yMax);
+            vStp += val;
         }
     }
 
@@ -387,11 +394,11 @@ public:
                 SKuint32 address = (SKuint32)(yMap * SKuint32(m_mapCell)) + (SKuint32)xMap;
                 address += SKuint32(m_mapCellSq) * i1;
 
-                int len = skSprintf(buf, 31, "0x%08X", address);
+                int len  = skSprintf(buf, 31, "0x%08X", address);
                 buf[len] = 0;
                 m_font->draw(m_renderer, buf, 20, 100, Text);
 
-                len = skSprintf(buf, 31, "(0x%02X, '%c', %d)", b, cc, (int)b);
+                len      = skSprintf(buf, 31, "(0x%02X, '%c', %d)", b, cc, (int)b);
                 buf[len] = 0;
                 m_font->draw(m_renderer, buf, 20, 120, Text);
             }
