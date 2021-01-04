@@ -1,5 +1,7 @@
 /*
 -------------------------------------------------------------------------------
+  Copyright (c) Charles Carley.
+
   This software is provided 'as-is', without any express or implied
   warranty. In no event will the authors be held liable for any damages
   arising from the use of this software.
@@ -61,6 +63,8 @@ private:
     bool              m_leftIsDown;
     bool              m_rightIsDown;
     bool              m_ctrlDown;
+    bool              m_shiftDown;
+    bool              m_initial;
     skVector2         m_size;
     skVector2         m_clickPos;
     skVector2         m_mouseCo;
@@ -84,6 +88,8 @@ public:
         m_leftIsDown(false),
         m_rightIsDown(false),
         m_ctrlDown(false),
+        m_shiftDown(false),
+        m_initial(true),
         m_mapCell(1),
         m_mapCellSq(1),
         m_maxCellX(0),
@@ -147,8 +153,13 @@ public:
     {
         switch (evt.key.keysym.sym)
         {
+        case SDLK_RCTRL:
         case SDLK_LCTRL:
             m_ctrlDown = true;
+            break;
+        case SDLK_RSHIFT:
+        case SDLK_LSHIFT:
+            m_shiftDown = true;
             break;
         case SDLK_ESCAPE:
             m_quit = true;
@@ -216,6 +227,42 @@ public:
         m_xForm.reset();
     }
 
+    void splitMappedMouseCo(skScalar& mapCo,
+                            int&      arrayIndex,
+                            int&      mapIndex,
+                            const int maxArrayIndex) const
+    {
+        skScalar wp, fp;
+        mapCo /= m_mapCellSq / m_xForm.getZoom();
+
+        if (mapCo >= 0)
+        {
+            skSplitScalar(mapCo, wp, fp);
+            arrayIndex = (int)wp;
+            if (arrayIndex < maxArrayIndex + 1)
+                mapIndex = (int)skFloor(fp * m_mapCell);
+            else
+                arrayIndex = -1;
+        }
+        else
+            arrayIndex = -1;
+    }
+
+    void getMouseCoMappedToCellXY(int& xArray, int& yArray, int& xMap, int& yMap) const
+    {
+        skScalar mapCo;
+        mapCo = m_mouseCo.x - m_xForm.viewportLeft();
+        mapCo -= m_xForm.xOffs();
+        splitMappedMouseCo(mapCo, xArray, xMap, m_maxCellX);
+
+        mapCo = m_mouseCo.y - m_xForm.viewportTop();
+        mapCo -= m_xForm.yOffs();
+        splitMappedMouseCo(mapCo, yArray, yMap, m_maxCellY);
+
+        if (xArray == -1 || yArray == -1)
+            xArray = xMap = yArray = yMap = -1;
+    }
+
     void handleResize(SKint32 newWidth, SKint32 newHeight)
     {
         if (newWidth > 0 && newHeight > 0)
@@ -225,6 +272,12 @@ public:
             setTransformViewportForWindowSize();
             m_xForm.zoom(0, false);
             m_redraw = true;
+
+            if (m_initial)
+            {
+                m_initial = false;
+                setInitial();
+            }
         }
     }
 
@@ -281,8 +334,9 @@ public:
                 }
                 else if (evt.button.button == SDL_BUTTON_RIGHT)
                 {
-                    m_clickPos.x  = skScalar(evt.button.x);
-                    m_clickPos.y  = skScalar(evt.button.y);
+                    m_mouseCo.x = skScalar(evt.button.x);
+                    m_mouseCo.y = skScalar(evt.button.y);
+
                     m_rightIsDown = true;
                     m_redraw      = true;
                 }
@@ -335,6 +389,7 @@ public:
             vStp += val;
         }
     }
+
 
     void displayMargin()
     {
@@ -405,49 +460,6 @@ public:
         }
     }
 
-    void splitMappedMouseCo(skScalar& mapCo,
-                            int&      arrayIndex,
-                            int&      mapIndex,
-                            const int maxArrayIndex) const
-    {
-        skScalar wp, fp;
-        mapCo /= m_mapCellSq / m_xForm.getZoom();
-
-        if (mapCo >= 0)
-        {
-            skSplitScalar(mapCo, wp, fp);
-            arrayIndex = (int)wp;
-            if (arrayIndex < maxArrayIndex + 1)
-                mapIndex = (int)skFloor(fp * m_mapCell);
-            else
-                arrayIndex = -1;
-        }
-        else
-            arrayIndex = -1;
-    }
-
-    void getMouseCoMappedToCellXY(int& xArray, int& yArray, int& xMap, int& yMap) const
-    {
-        // Grab the mouse coordinate relative to the viewport
-        // then take off the current offset and divide it as
-        // a ratio of the cell to find its major index.
-        // Then take the fractional part (its ratio of one cell)
-        // to get its index into the map itself.
-        // Be sure to test the index  (xArray * m_maxCellX + yArray)
-
-        skScalar mapCo;
-        mapCo = m_mouseCo.x - m_xForm.viewportLeft();
-        mapCo -= m_xForm.xOffs();
-        splitMappedMouseCo(mapCo, xArray, xMap, m_maxCellX);
-
-        mapCo = m_mouseCo.y - m_xForm.viewportTop();
-        mapCo -= m_xForm.yOffs();
-        splitMappedMouseCo(mapCo, yArray, yMap, m_maxCellY);
-
-        if (xArray == -1 || yArray == -1)
-            xArray = xMap = yArray = yMap = -1;
-    }
-
     void render()
     {
         DrawUtils::Clear(m_renderer, Background2);
@@ -487,23 +499,11 @@ public:
         DrawUtils::SetViewport(m_renderer, m_size);
         displayMargin();
 
-        m_font->setPointScale(12);
-
         int xArray, yArray;
         int xMap, yMap;
         getMouseCoMappedToCellXY(xArray, yArray, xMap, yMap);
 
-        //m_font->draw(m_renderer, "X", 20, 20, Text);
-        //m_font->draw(m_renderer, xArray, 35, 20, Text);
-        //m_font->draw(m_renderer, "Y", 20, 40, Text);
-        //m_font->draw(m_renderer, yArray, 35, 40, Text);
-        //m_font->draw(m_renderer, "u", 20, 60, Text);
-        //m_font->draw(m_renderer, xMap, 35, 60, Text);
-        //m_font->draw(m_renderer, "v", 20, 80, Text);
-        //m_font->draw(m_renderer, yMap, 35, 80, Text);
-
         char buf[32] = {};
-
         if (xArray >= 0)
         {
             SKuint32 i1 = (SKuint32)xArray * (SKuint32)m_maxCellX + (SKuint32)yArray;

@@ -21,9 +21,9 @@
 #define _freqFont_h_
 
 #include "Math/skColor.h"
+#include "Math/skRectangle.h"
 #include "Math/skScalar.h"
 #include "Utils/skString.h"
-#include "Math/skRectangle.h"
 
 struct SDL_Texture;
 struct SDL_Renderer;
@@ -48,6 +48,7 @@ private:
     SKint32      m_height;
     SKint32      m_pitch;
     SKint32      m_xMax;
+    SKint32      m_xAvr;
     SKint32      m_yMax;
     skScalar     m_pointScale;
     skColor      m_color;
@@ -71,32 +72,51 @@ public:
     void getMaxExtent(skVector2& dest, skScalar val) const;
     void getMaxExtent(skVector2& dest, const char* text, SKsize len = SK_NPOS) const;
 
+    void draw(SDL_Renderer* renderer,
+              const char*   text,
+              skScalar      x,
+              skScalar      y,
+              SKsize        len = SK_NPOS) const;
 
-    void draw(SDL_Renderer*  renderer,
-              const char*    text,
-              skScalar       x,
-              skScalar       y,
-              SKsize         len = SK_NPOS) const;
+    void draw(SDL_Renderer* renderer,
+              skScalar      val,
+              skScalar      x,
+              skScalar      y) const;
 
-    void draw(SDL_Renderer*  renderer,
-              skScalar       val,
-              skScalar       x,
-              skScalar       y) const;
+    void draw(SDL_Renderer* renderer,
+              SKint32       val,
+              skScalar      x,
+              skScalar      y) const;
 
-    void draw(SDL_Renderer*  renderer,
-              SKint32        val,
-              skScalar       x,
-              skScalar       y) const;
-
-    void draw(SDL_Renderer*  renderer,
-              SKuint32       val,
-              skScalar       x,
-              skScalar       y) const;
+    void draw(SDL_Renderer* renderer,
+              SKuint32      val,
+              skScalar      x,
+              skScalar      y) const;
 
     void setPointScale(skScalar scale)
     {
         if (m_size > 0)
             m_pointScale = scale / skScalar(m_size);
+    }
+
+    skScalar getPointScale() const
+    {
+        return m_pointScale;
+    }
+
+    skScalar getAverageCharacterWidth() const
+    {
+        return skScalar(m_xAvr) * m_pointScale;
+    }
+
+    skScalar getMaxCharacterWidth() const
+    {
+        return skScalar(m_xMax) * m_pointScale;
+    }
+
+    skScalar getMaxCharacterHeight() const
+    {
+        return skScalar(m_yMax) * m_pointScale;
     }
 };
 

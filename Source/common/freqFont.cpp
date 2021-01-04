@@ -44,6 +44,7 @@ Font::Font() :
     m_height(0),
     m_pitch(0),
     m_xMax(0),
+    m_xAvr(0),
     m_yMax(0),
     m_pointScale(1)
 {
@@ -61,10 +62,12 @@ void Font_calculateLimits(FT_Face        face,
                           SKint32&       w,
                           SKint32&       h,
                           SKint32&       xMax,
-                          SKint32&       yMax)
+                          SKint32&       yMax,
+                          SKint32&       xAvr)
 {
     xMax = 0;
     yMax = 0;
+    xAvr = 0;
 
     SKint32 i;
     for (i = CharStart; i < CharEnd; ++i)
@@ -76,14 +79,21 @@ void Font_calculateLimits(FT_Face        face,
         if (!slot)
             continue;
 
-        const SKint32 cx = FTINT(slot->metrics.horiBearingX + slot->metrics.width);
-        const SKint32 cy = FTINT(slot->metrics.height);
+        const SKint32 cx = slot->metrics.horiBearingX + slot->metrics.width;
+        const SKint32 cy = slot->metrics.height;
 
         if (yMax < cy)
             yMax = cy;
         if (xMax < cx)
             xMax = cx;
+
+        xAvr += cx;
     }
+
+    xMax = FTINT(xMax);
+    yMax = FTINT(yMax);
+    xAvr = FTINT(xAvr);
+    xAvr /= CharTotal;
 
     skScalar sx, sy, sr;
     sr = skSqrt(skScalar(CharTotal));
@@ -150,7 +160,7 @@ void Font::loadInternal(SDL_Renderer* renderer,
     m_dpi  = dpi;
     m_size = size;
 
-    Font_calculateLimits(face, Spacer, m_width, m_height, m_xMax, m_yMax);
+    Font_calculateLimits(face, Spacer, m_width, m_height, m_xMax, m_yMax, m_xAvr);
 
     m_texture = SDL_CreateTexture(renderer,
                                   SDL_PIXELFORMAT_RGBA8888,
