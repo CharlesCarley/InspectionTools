@@ -160,6 +160,7 @@ public:
         yFac = 1.f / m_yAxisScale;
         xFac = 1.f / m_xAxisScale;
 
+
         step = yMin - skFmod(yMin - m_xForm.yOffs(), val);
         while (step < yMax)
         {
@@ -174,8 +175,7 @@ public:
             m_font->draw(m_renderer,
                          (int)value,
                          3.f,
-                         vStp - 12,
-                         Text);
+                         vStp - 12);
             step += val;
         }
 
@@ -198,8 +198,7 @@ public:
                 m_font->draw(m_renderer,
                              (int)value,
                              vStp - 3,
-                             m_winSize.y - m_displayOffs.y + 5,
-                             Text);
+                             m_winSize.y - m_displayOffs.y + 5);
             }
             step += val;
         }
@@ -371,6 +370,7 @@ public:
 
         m_font = new Font();
         m_font->loadInternal(m_renderer, 32, 72);
+        m_font->setColor(Text);
 
         m_viewport = skRectangle(m_displayOffs.x, 0, m_winSize.x, m_winSize.y - m_displayOffs.y);
 

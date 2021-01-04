@@ -23,6 +23,7 @@
 #include "Math/skColor.h"
 #include "Math/skScalar.h"
 #include "Utils/skString.h"
+#include "Math/skRectangle.h"
 
 struct SDL_Texture;
 struct SDL_Renderer;
@@ -49,6 +50,7 @@ private:
     SKint32      m_xMax;
     SKint32      m_yMax;
     skScalar     m_pointScale;
+    skColor      m_color;
 
     void        setPixel(SKint32 x, SKint32 y, void* pixels, SKuint32 color) const;
     const Char& getBoundsFor(char ch) const;
@@ -61,30 +63,35 @@ public:
                       SKuint32      size,
                       SKuint32      dpi);
 
+    void setColor(const skColor& col);
+    void setColor(const skColori& col);
+
+    void getMaxExtent(skVector2& dest, SKuint32 val) const;
+    void getMaxExtent(skVector2& dest, SKint32 val) const;
+    void getMaxExtent(skVector2& dest, skScalar val) const;
+    void getMaxExtent(skVector2& dest, const char* text, SKsize len = SK_NPOS) const;
+
+
     void draw(SDL_Renderer*  renderer,
               const char*    text,
               skScalar       x,
               skScalar       y,
-              const skColor& col,
               SKsize         len = SK_NPOS) const;
 
     void draw(SDL_Renderer*  renderer,
               skScalar       val,
               skScalar       x,
-              skScalar       y,
-              const skColor& col) const;
+              skScalar       y) const;
 
     void draw(SDL_Renderer*  renderer,
               SKint32        val,
               skScalar       x,
-              skScalar       y,
-              const skColor& col) const;
+              skScalar       y) const;
 
     void draw(SDL_Renderer*  renderer,
               SKuint32       val,
               skScalar       x,
-              skScalar       y,
-              const skColor& col) const;
+              skScalar       y) const;
 
     void setPointScale(skScalar scale)
     {

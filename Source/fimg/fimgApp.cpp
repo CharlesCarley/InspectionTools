@@ -35,13 +35,15 @@ const skColor  Background       = skColor(0x282828FF);
 const skColor  BackgroundGraph  = skColor(0x333333FF);
 const skColor  BackgroundGraph2 = skColor(0x252525FF);
 const skColor  BackgroundGraph3 = skColor(0x545454FF);
-const skColor  LineColor        = skColor(0x5EC4F6FF);
+const skColor  LineColor        = skColor(0x0080FFFF);  //0x5EC4F6FF
 const skColor  Background2      = skColor(0x181818FF);
+const skColor  Background3      = skColor(0x080808FF);
 const skColor  White            = skColor(0xFFFFFFFF);
 const skColor  Black            = skColor(0x000000FF);
 const skColor  Red              = skColor(0xFF0000FF);
 const skColor  Text             = skColor(0xD5D5D5FF);
-const SKuint32 WindowFlags      = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+const SKuint32 RenderFlags      = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
+const SKuint32 WindowFlags      = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
 
 class PrivateApp
 {
@@ -67,6 +69,8 @@ private:
     skScreenTransform m_xForm;
     int               m_maxCellX;
     int               m_maxCellY;
+    int               m_panStepX;
+    int               m_panStepY;
 
 public:
     PrivateApp(FimgApplication* parent) :
@@ -83,7 +87,9 @@ public:
         m_mapCell(1),
         m_mapCellSq(1),
         m_maxCellX(0),
-        m_maxCellY(0)
+        m_maxCellY(0),
+        m_panStepX(0),
+        m_panStepY(0)
     {
     }
 
@@ -104,27 +110,6 @@ public:
         SDL_Quit();
     }
 
-    void setInitial()
-    {
-        skRectangle vp;
-
-        vp.width  = m_size.x;
-        vp.height = m_size.y;
-
-        skMath::forceAlign(vp.width, 16);
-        skMath::forceAlign(vp.height, 16);
-
-        skScalar sval = (skScalar)m_textures.size();
-        sval          = skSqrt(sval);
-
-        const skScalar lim = m_mapCellSq * sval;
-
-        m_xForm.setInitialOrigin(0, 0);
-        m_xForm.setScaleLimit(1, lim);
-        m_xForm.setViewport(vp);
-        m_xForm.reset();
-    }
-
     void setColor(const skPixel& color) const
     {
         SDL_SetRenderDrawColor(m_renderer,
@@ -132,6 +117,30 @@ public:
                                color.g,
                                color.b,
                                color.a);
+    }
+
+    void fixedPan()
+    {
+        if (m_panStepY > 0)
+            m_panStepY = 0;
+        if (m_panStepX > 0)
+            m_panStepX = 0;
+
+        if (m_panStepY <= -m_maxCellY)
+        {
+            m_panStepY = 0;
+            --m_panStepX;
+        }
+
+        if (m_panStepX <= -m_maxCellX)
+        {
+            m_panStepX = 0;
+            --m_panStepY;
+        }
+
+        m_xForm.setOrigin(
+            skScalar(m_panStepX) * m_mapCellSq,
+            skScalar(m_panStepY) * m_mapCellSq);
     }
 
     void handleKeyDown(const SDL_Event& evt)
@@ -149,19 +158,23 @@ public:
             m_redraw = true;
             break;
         case SDLK_UP:
-            m_xForm.panFixed(0, m_mapCellSq);
+            ++m_panStepY;
+            fixedPan();
             m_redraw = true;
             break;
         case SDLK_DOWN:
-            m_xForm.panFixed(0, -m_mapCellSq);
+            --m_panStepY;
+            fixedPan();
             m_redraw = true;
             break;
         case SDLK_LEFT:
-            m_xForm.panFixed(m_mapCellSq, 0);
+            ++m_panStepX;
+            fixedPan();
             m_redraw = true;
             break;
         case SDLK_RIGHT:
-            m_xForm.panFixed(-m_mapCellSq, 0);
+            --m_panStepX;
+            fixedPan();
             m_redraw = true;
             break;
         case SDLK_KP_PLUS:
@@ -170,7 +183,7 @@ public:
             break;
         case SDLK_c:
         case SDLK_KP_PERIOD:
-            m_xForm.reset();
+            setInitial();
             m_redraw = true;
             break;
         case SDLK_g:
@@ -182,6 +195,39 @@ public:
         }
     }
 
+    void setTransformViewportForWindowSize()
+    {
+        m_xForm.setViewport(40, 20, m_size.x - 200, m_size.y - 10);
+    }
+
+    void setInitial()
+    {
+        m_panStepX = 0;
+        m_panStepY = 0;
+
+        skScalar sval = (skScalar)m_textures.size();
+        sval          = skSqrt(sval);
+
+        const skScalar lim = m_mapCellSq * sval;
+
+        setTransformViewportForWindowSize();
+        m_xForm.setInitialOrigin(0, 0);
+        m_xForm.setScaleLimit(1, lim);
+        m_xForm.reset();
+    }
+
+    void handleResize(SKint32 newWidth, SKint32 newHeight)
+    {
+        if (newWidth > 0 && newHeight > 0)
+        {
+            m_size.x = (skScalar)newWidth;
+            m_size.y = (skScalar)newHeight;
+            setTransformViewportForWindowSize();
+            m_xForm.zoom(0, false);
+            m_redraw = true;
+        }
+    }
+
     void processEvents()
     {
         SDL_Event evt;
@@ -189,6 +235,10 @@ public:
         {
             switch (evt.type)
             {
+            case SDL_WINDOWEVENT:
+                if (evt.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                    handleResize(evt.window.data1, evt.window.data2);
+                break;
             case SDL_KEYDOWN:
                 handleKeyDown(evt);
                 break;
@@ -264,7 +314,7 @@ public:
         DrawUtils::SetColor(m_renderer, BackgroundGraph2);
 
         const bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
-        val = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
+        val               = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
 
         xMin = 0;
         yMin = 0;
@@ -282,6 +332,75 @@ public:
         while (vStp < xMax)
         {
             DrawUtils::ScreenLineTo(m_renderer, vStp, yMin, vStp, yMax);
+            vStp += val;
+        }
+    }
+
+    void displayMargin()
+    {
+        m_font->setPointScale(12);
+        skScalar xMax, yMax, val, vStp;
+
+        const bool doGrid = skEqT(m_xForm.getZoom(), 1, .5);
+        val               = (doGrid ? m_mapCell : m_mapCellSq) / m_xForm.getZoom();
+
+        xMax = m_xForm.viewportLeft();
+        yMax = m_xForm.viewportHeight();
+
+        DrawUtils::SetColor(m_renderer, Background3);
+        DrawUtils::FillScreenRect(m_renderer, skRectangle(0, m_xForm.viewportTop(), xMax, yMax));
+        DrawUtils::SetColor(m_renderer, Background);
+
+        const skScalar cFac = 1.f / m_mapCell;
+
+        vStp = skFmod(m_xForm.yOffs(), val);
+        vStp += m_xForm.viewportTop();
+        m_font->setColor(Text);
+
+        skVector2 ie;
+        while (vStp < yMax)
+        {
+            if (vStp > m_xForm.viewportTop())
+            {
+                DrawUtils::ScreenLineTo(m_renderer, 0, vStp, xMax, vStp);
+
+                skScalar value = m_xForm.getScreenY(vStp - m_xForm.viewportTop());
+                value *= cFac;
+
+                const SKint32 iv = SKint32(value);
+                m_font->getMaxExtent(ie, iv);
+                m_font->draw(m_renderer, iv, xMax - ie.x, vStp - 4.f);
+            }
+
+            vStp += val;
+        }
+
+        xMax = m_xForm.viewportWidth();
+        yMax = m_xForm.viewportTop();
+
+        DrawUtils::SetColor(m_renderer, Background3);
+        DrawUtils::FillScreenRect(m_renderer, skRectangle(0, 0, xMax + m_xForm.viewportLeft(), yMax));
+        DrawUtils::SetColor(m_renderer, Background);
+
+        vStp = skFmod(m_xForm.xOffs(), val);
+        vStp += m_xForm.viewportLeft();
+        while (vStp < xMax)
+        {
+            if (vStp > m_xForm.viewportLeft())
+            {
+                DrawUtils::ScreenLineTo(m_renderer, vStp, 0, vStp, yMax);
+
+                skScalar value = m_xForm.getScreenX(vStp - m_xForm.viewportLeft());
+                value *= cFac;
+
+                const SKint32 iv = SKint32(value);
+                m_font->getMaxExtent(ie, iv);
+
+                m_font->draw(m_renderer,
+                             iv,
+                             vStp - ie.x * skScalar(.5),
+                             4);
+            }
             vStp += val;
         }
     }
@@ -332,8 +451,8 @@ public:
     void render()
     {
         DrawUtils::Clear(m_renderer, Background2);
-        DrawUtils::SetViewport(m_renderer, m_xForm);
 
+        DrawUtils::SetViewport(m_renderer, m_xForm);
         skScalar x1, y1, x2, y2;
 
         Images::Iterator it = m_textures.iterator();
@@ -346,34 +465,42 @@ public:
             x1 = m_xForm.getViewX(x1), x2 = m_xForm.getViewX(x2);
             y1 = m_xForm.getViewY(y1), y2 = m_xForm.getViewY(y2);
 
-            const SDL_Rect dest = {
-                (int)x1,
-                (int)y1,
-                (int)(x2 - x1),
-                (int)(y2 - y1),
-            };
+            if (m_xForm.isInViewport(x1, y1, x2, y2))
+            {
+                const SDL_Rect dest = {
+                    (int)x1,
+                    (int)y1,
+                    (int)(x2 - x1),
+                    (int)(y2 - y1),
+                };
 
-            SDL_RenderCopy(m_renderer,
-                           map->getTexture(),
-                           nullptr,
-                           &dest);
+                SDL_RenderCopy(m_renderer,
+                               map->getTexture(),
+                               nullptr,
+                               &dest);
+            }
         }
 
         if (m_showGrid)
             displayGrid();
 
+        DrawUtils::SetViewport(m_renderer, m_size);
+        displayMargin();
+
+        m_font->setPointScale(12);
+
         int xArray, yArray;
         int xMap, yMap;
         getMouseCoMappedToCellXY(xArray, yArray, xMap, yMap);
 
-        m_font->draw(m_renderer, "X", 20, 20, Text);
-        m_font->draw(m_renderer, xArray, 35, 20, Text);
-        m_font->draw(m_renderer, "Y", 20, 40, Text);
-        m_font->draw(m_renderer, yArray, 35, 40, Text);
-        m_font->draw(m_renderer, "u", 20, 60, Text);
-        m_font->draw(m_renderer, xMap, 35, 60, Text);
-        m_font->draw(m_renderer, "v", 20, 80, Text);
-        m_font->draw(m_renderer, yMap, 35, 80, Text);
+        //m_font->draw(m_renderer, "X", 20, 20, Text);
+        //m_font->draw(m_renderer, xArray, 35, 20, Text);
+        //m_font->draw(m_renderer, "Y", 20, 40, Text);
+        //m_font->draw(m_renderer, yArray, 35, 40, Text);
+        //m_font->draw(m_renderer, "u", 20, 60, Text);
+        //m_font->draw(m_renderer, xMap, 35, 60, Text);
+        //m_font->draw(m_renderer, "v", 20, 80, Text);
+        //m_font->draw(m_renderer, yMap, 35, 80, Text);
 
         char buf[32] = {};
 
@@ -383,9 +510,9 @@ public:
 
             if (i1 < m_textures.size())
             {
-                const SKubyte b  = m_textures.at(i1)->getByte(xMap, yMap);
-                SKbyte        cc = ' ';
+                const SKubyte b = m_textures.at(i1)->getByte(xMap, yMap);
 
+                SKbyte cc = ' ';
                 if (b >= 32 && b < 127)
                     cc = b;
 
@@ -396,17 +523,15 @@ public:
 
                 int len  = skSprintf(buf, 31, "0x%08X", address);
                 buf[len] = 0;
-                m_font->draw(m_renderer, buf, 20, 100, Text);
+                m_font->draw(m_renderer, buf, m_xForm.viewportRight(), 10);
 
-                len      = skSprintf(buf, 31, "(0x%02X, '%c', %d)", b, cc, (int)b);
+                len      = skSprintf(buf, 31, "0x%02X, '%c', %d", b, cc, (int)b);
                 buf[len] = 0;
-                m_font->draw(m_renderer, buf, 20, 120, Text);
+                m_font->draw(m_renderer, buf, m_xForm.viewportRight(), 25);
             }
         }
 
-        DrawUtils::SetViewport(m_renderer, m_size);
-
-        setColor(skPalette::Grey05);
+        DrawUtils::SetColor(m_renderer, Background3);
         DrawUtils::StrokeScreenRect(m_renderer, m_xForm.getViewport());
         SDL_RenderPresent(m_renderer);
     }
@@ -462,7 +587,7 @@ public:
                                     SDL_WINDOWPOS_CENTERED,
                                     w,
                                     h,
-                                    SDL_WINDOW_SHOWN);
+                                    WindowFlags);
         if (!m_window)
         {
             skLogf(LD_ERROR, "Failed to create window:\n\t%s\n", SDL_GetError());
@@ -471,7 +596,7 @@ public:
 
         m_renderer = SDL_CreateRenderer(m_window,
                                         -1,
-                                        WindowFlags);
+                                        RenderFlags);
         if (!m_renderer)
         {
             skLogf(LD_ERROR, "Failed to create renderer:\n\t%s\n", SDL_GetError());

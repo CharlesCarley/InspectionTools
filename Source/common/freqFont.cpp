@@ -170,7 +170,7 @@ void Font::loadInternal(SDL_Renderer* renderer,
     x = y = 0;
     for (i = CharStart; i < CharEnd; ++i)
     {
-        if (FT_Load_Char(face, i, FT_LOAD_NO_HINTING|FT_LOAD_RENDER))
+        if (FT_Load_Char(face, i, FT_LOAD_NO_HINTING | FT_LOAD_RENDER))
             continue;
 
         if (!face->glyph)
@@ -225,12 +225,75 @@ void Font::loadInternal(SDL_Renderer* renderer,
     FT_Done_FreeType(lib);
 }
 
-void Font::draw(SDL_Renderer*  renderer,
-                const char*    text,
-                skScalar       x,
-                skScalar       y,
-                const skColor& color,
-                SKsize         len) const
+void Font::setColor(const skColor& col)
+{
+    m_color = col;
+}
+
+void Font::setColor(const skColori& col)
+{
+    m_color = skColor(col);
+}
+
+void Font::getMaxExtent(skVector2& dest, const SKuint32 val) const
+{
+    char buf[33];
+
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%u", val);
+    getMaxExtent(dest, buf, len);
+}
+
+void Font::getMaxExtent(skVector2& dest, const SKint32 val) const
+{
+    char buf[33];
+
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
+    getMaxExtent(dest, buf, len);
+}
+
+void Font::getMaxExtent(skVector2& dest, const skScalar val) const
+{
+    char buf[33];
+
+    const double v   = double(val);
+    const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", v);
+    getMaxExtent(dest, buf, len);
+}
+
+void Font::getMaxExtent(skVector2& dest, const char* text, SKsize len) const
+{
+    if (!text || !*text)
+        return;
+
+    if (len == SK_NPOS)
+        len = strlen(text);
+
+    dest.x = 0;
+    dest.y = skScalar(m_yMax) * m_pointScale;
+
+    for (SKsize i = 0; i < len; ++i)
+    {
+        const SKuint8 ch = text[i];
+        if (ch == '\n' || ch == '\r')
+            dest.y += skScalar(m_yMax) * m_pointScale;
+        else if (ch == ' ')
+            dest.x += skScalar(m_xMax) * m_pointScale;
+        else if (ch == '\t')
+            dest.x += 4 * skScalar(m_xMax) * m_pointScale;
+        else
+        {
+            const Char& cch = getBoundsFor(ch);
+            if (cch.w > 0)
+                dest.x += skScalar(cch.w) * m_pointScale;
+        }
+    }
+}
+
+void Font::draw(SDL_Renderer* renderer,
+                const char*   text,
+                skScalar      x,
+                skScalar      y,
+                SKsize        len) const
 {
     if (!text || !*text)
         return;
@@ -242,7 +305,7 @@ void Font::draw(SDL_Renderer*  renderer,
     const skScalar xOffs = x;
 
     SKuint8 r, g, b;
-    color.asRGB888(r, g, b);
+    m_color.asRGB888(r, g, b);
     SDL_SetTextureColorMod(m_texture, r, g, b);
 
     for (SKsize i = 0; i < len; ++i)
@@ -283,34 +346,30 @@ void Font::draw(SDL_Renderer*  renderer,
 void Font::draw(SDL_Renderer*  renderer,
                 const skScalar val,
                 skScalar       x,
-                skScalar       y,
-                const skColor& col) const
+                skScalar       y) const
 {
-    char buf[33];
-
+    char         buf[33];
     const double v   = double(val);
     const SKsize len = (SKsize)skSprintf(buf, 32, "%0.2f", v);
-    draw(renderer, buf, x, y, col, len);
+    draw(renderer, buf, x, y, len);
 }
 
-void Font::draw(SDL_Renderer*  renderer,
-                const SKint32  val,
-                skScalar       x,
-                skScalar       y,
-                const skColor& col) const
+void Font::draw(SDL_Renderer* renderer,
+                const SKint32 val,
+                skScalar      x,
+                skScalar      y) const
 {
     char         buf[33];
     const SKsize len = (SKsize)skSprintf(buf, 32, "%d", val);
-    draw(renderer, buf, x, y, col, len);
+    draw(renderer, buf, x, y, len);
 }
 
 void Font::draw(SDL_Renderer*  renderer,
-                const SKuint32  val,
+                const SKuint32 val,
                 skScalar       x,
-                skScalar       y,
-                const skColor& col) const
+                skScalar       y) const
 {
     char         buf[33];
     const SKsize len = (SKsize)skSprintf(buf, 32, "%u", val);
-    draw(renderer, buf, x, y, col, len);
+    draw(renderer, buf, x, y, len);
 }
