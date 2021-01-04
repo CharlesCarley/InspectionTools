@@ -1,8 +1,9 @@
-# Template
-This is a template repo (insert  description here)
+# Inspection Tools
 
+Is a repository for miscellaneous experiments.
 
 ## Building
+
 Building with CMake
 
 ```txt
