@@ -1,3 +1,34 @@
+# Byte Frequency Viewer
+
+## Usage 
+
+```txt
+Usage: freq <options>
+
+  <options>:
+
+    -h, --help     Display this help message.
+    -r, --range    Specify a start address and a range.
+                     - Arguments: [address, range]
+                       - Address Base 16 [0 - file length]
+                       - Range   Base 10 [0 - file length]
+
+        --no-drop  Do not drop zero values.
+        --no-color Disable color printing.
+    -w, --window   Graph items in a window.
+                     - Arguments: [width, height]
+                       - Width  [200 - 7680]
+                       - Height [100 - 4320]
+
+    -g, --graph    Display a text based bar graph.
+                     - Arguments: [width, height]
+                       - Width  [1 - 128]
+                       - Height [10 - 256]
+
+```
+
+### Example Output
+
  ``` ./freq freq -g 64 16 --no-color```
 
 ```
