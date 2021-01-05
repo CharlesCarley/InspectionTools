@@ -6,6 +6,7 @@ set(Utils_TargetGroup Extern)
 subdirs(Utils)
 
 if (InspectionTools_BUILD_SDL)
+    set(SDL_FOLDER "Extern")
     subdirs(SDL)
     set(Math_ExternalTarget TRUE)
     set(Math_TargetFolders TRUE)
