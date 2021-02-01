@@ -37,7 +37,8 @@ set(FreeImage_LIBRARY   FreeImage)
 set(Image_INCLUDE       ${InspectionTools_SOURCE_DIR}/Extern/Image)
 set(Utils_INCLUDE       ${InspectionTools_SOURCE_DIR}/Extern)
 set(Math_INCLUDE        ${InspectionTools_SOURCE_DIR}/Extern)
-set(SDL_INCLUDE         ${InspectionTools_SOURCE_DIR}/Extern/SDL ${InspectionTools_SOURCE_DIR}/Extern/Freetype/Source/include)
+set(SDL_INCLUDE         ${InspectionTools_SOURCE_DIR}/Extern/SDL 
+                        ${InspectionTools_SOURCE_DIR}/Extern/Freetype/Source/2.10.4/include)
 set(SDL_LIBS      SDL2-static Freetype FreeImage Image)
 
 # -----------------------------------------------------------------------------
